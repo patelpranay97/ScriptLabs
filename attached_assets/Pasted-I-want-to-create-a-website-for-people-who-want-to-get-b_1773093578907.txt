@@ -1,0 +1,60 @@
+I want to create a website for people who want to get better at social media. I have the idea i just need to understand how to set up the infrastructure and get started with it.
+Basically last year I grew my social media following form 700 to 17.3k followers in 5 months using Chat GPT and other AI tools to help me better script videos.  The way i started was, i’d find 3-4 creators I liked, i’d biforcate 2-3 of their videos i liked into just audio, then using an online ai tool, I’d get a script of their videos(through audio to text tools). I would then take those 2-3 scripts feed it into chatgpt and have it  analyze them. Have it understand the type of scripts i want write, the emotions i want to convey etc, then I would  give it my idea, and have it create a script that’s a close to the creators I liked.
+Thats just step one.
+Then I would proceed to make those scripted videos and post them, each time drawing from the creators I liked and their scripts. After 1 day 2 days and 3 days sometimes even after 1 week, I would reference the script we created and how its video is performing, good OR bad - by providing screenshots of the instagram insights consisting of avg viewtime, and other metrics(see screenshots).
+And have it analyze and understand videos that did well and videos that didn’t and find commanilites and extract valuable lessons from each video, after about 10 videos we were so locked in that each video after was A)serving as a new viewpoint B) Going viral, it got a point where I hit 12 million views in 1 month.
+With more data points(more videos) we fine tuned what worked and what didn’t, and that eventually turned into a “Virality DNA” see below, basically things we’d want each and every script to have to maximize its chances of virality.
+––Virality DNA —–
+Element
+Motu
+Champi
+Hook
+🔥
+💤
+Cultural Anchors
+✅ SRK, Ladoo, cheek pinches
+✅ Coconut oil, Bollywood
+Tension
+✅ Identity & shame
+❌ None
+Internal Shift
+✅ From insecurity to acceptance
+❌ Mostly flat
+Poetic/Reflective End
+✅ “I think.”
+✅ “Thanks, Mom.” (but not powerful enough)
+Social Tagability
+✅ High
+❌ Low
+THE INDIAN VIRALITY DNA
+These are the key elements that should be present in every script we aim to go viral:
+	1.	Start Midstream
+• No “setup” or introductions.
+• Drop the viewer directly into a memory, thought, or emotional situation.
+• Example: “My dad refused to pay $15 for a kid’s haircut.”
+	2.	Use Specific Cultural Anchors
+• Details that trigger nostalgia: names, foods, locations, products, language.
+• Not just “my mom packed lunch”—say “thepla, shaak, daal bhaat.”
+• Example: Bournvita, Tarak Mehta, Fair & Lovely, gaddis, steel plates, mandir friends, Great Clips.
+	3.	Introduce Tension Early
+• Include a clear internal or external pressure: embarrassment, cultural clash, identity conflict, parental expectations, comparison, or generational divide.
+• Don’t over-explain—let the tension simmer through action or dialogue.
+	4.	Include a Clear Emotional Shift
+• Childhood perspective vs. adult reflection.
+• Moment of clarity, understanding, humor, or soft contradiction.
+• Example: “I used to hate being seen in Indian clothes. Now I wear them with pride.”
+	5.	First Payoff by 20–25 Seconds
+• Your first emotional or narrative payoff (climax or punchline) should land here to retain attention.
+• If the “moment” happens too late (past 30s), people drop off.
+	6.	End with Poetic, Not Preachy, Reflection
+• Don’t moralize. Don’t summarize the lesson.
+• Use a soft emotional bow—nostalgia, irony, or quiet pride.
+• Example: “I’ve never stayed in a 5-star hotel in India. But I’ve slept in a living room full of cousins.”
+	7.	Optional but Powerful: Sensory Moments
+• Add one sensory visual: the smell of poha, the sound of steel plates, the texture of hot rotis.
+• Makes the story feel real and visceral.
+—–End Virality DNA––
+Again this is something that contains to me and my type of video’s which were story telling, but the same framework can be done for literally any Content Creator that speaks, talks, in their videos.
+I want to create a website where people will login, and speak to a chat bot-ideally claude– the chat bot knows of our back end structure/process and it can reference and edit a SQL file consisting of the users previous videos broken down into the name of the video, the link even of the page, the final script that was written, 1 day 2 day 3 day performance even 1 week of metrics, key points, a flag thats states success or unsuccessful, etc. Basically a data table for the chat bot to always reference and build off of, and after about 10 or so video’s/datapoints, the chatbot creates and shares a virality dna for that creator and stores that as well to reference and run against each new script and give a score to each new script. I need a database because chat agents tend to forget older videos because just the amount of chats that happen while refining a script.
+Help me create this? Help me create a system architecture? All the tools or websites i’ll need for something like this, to store data, to reference it and use it, all the while allowing users to chat to a bot and create content idea’s, even export the sql data as a excel if they want to see how the data is stored. The chat bot should also remind users to upload screenshots of the metrics for the videos they posted.
+ANy questions?
