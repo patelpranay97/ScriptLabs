@@ -1,16 +1,271 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { setupAuth, isAuthenticated } from "./replit_integrations/auth";
+import { registerAuthRoutes } from "./replit_integrations/auth/routes";
+import Anthropic from "@anthropic-ai/sdk";
+import { insertVideoSchema } from "@shared/schema";
+import { z } from "zod";
+
+const SYSTEM_PROMPT = `You are ViralCoach, an expert AI content strategy coach specializing in social media growth. You help creators craft viral content by analyzing scripts, reviewing video performance, and building their unique "Virality DNA."
+
+Your expertise includes:
+- Script writing and analysis for short-form video content (Reels, TikToks, Shorts)
+- Understanding Instagram, TikTok, YouTube, and Twitter/X algorithms
+- Analyzing video performance metrics (views, engagement, watch time, skip rates, retention curves)
+- Identifying patterns in successful vs unsuccessful content
+- Building personalized content strategies based on data
+
+THE VIRALITY DNA FRAMEWORK:
+When helping users craft content, reference these proven elements:
+1. Start Midstream - Drop viewers directly into a memory, thought, or emotional situation. No setup or introductions.
+2. Use Specific Cultural Anchors - Details that trigger nostalgia: names, foods, locations, products, language. Be specific, not generic.
+3. Introduce Tension Early - Include clear internal or external pressure: embarrassment, cultural clash, identity conflict, parental expectations.
+4. Include a Clear Emotional Shift - Childhood vs adult perspective. Moment of clarity, understanding, humor, or soft contradiction.
+5. First Payoff by 20-25 Seconds - First emotional or narrative payoff should land here to retain attention.
+6. End with Poetic, Not Preachy, Reflection - Don't moralize. Use soft emotional bow: nostalgia, irony, or quiet pride.
+7. Optional but Powerful: Sensory Moments - Add one sensory visual: a smell, sound, or texture that makes the story feel real.
+
+COACHING APPROACH:
+- When a user shares a script, analyze it against the Virality DNA elements
+- When performance data is shared, identify what worked and what didn't
+- Ask probing questions to understand the creator's niche and audience
+- Be encouraging but honest - point out weaknesses constructively
+- Reference their past videos when they share performance data to build on patterns
+- Remind users to track their metrics after posting (Day 1, Day 2, Day 3, Week 1)
+- Help them build their personalized Virality DNA over time
+
+When a user provides video data context, analyze it carefully and reference specific metrics in your advice. If they mention multiple videos, look for patterns across their content library.
+
+Keep responses conversational, actionable, and focused. You're a coach, not a lecturer.`;
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // put application routes here
-  // prefix all routes with /api
+  await setupAuth(app);
+  registerAuthRoutes(app);
 
-  // use storage to perform CRUD operations on the storage interface
-  // e.g. storage.insertUser(user) or storage.getUserByUsername(username)
+  const anthropic = new Anthropic({
+    apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
+    baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+  });
+
+  app.get("/api/videos", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const vids = await storage.getVideosByUser(userId);
+      res.json(vids);
+    } catch (error) {
+      console.error("Error fetching videos:", error);
+      res.status(500).json({ error: "Failed to fetch videos" });
+    }
+  });
+
+  app.post("/api/videos", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const parsed = insertVideoSchema.safeParse({ ...req.body, userId });
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid video data", details: parsed.error.flatten() });
+      }
+      const video = await storage.createVideo(parsed.data);
+      res.status(201).json(video);
+    } catch (error) {
+      console.error("Error creating video:", error);
+      res.status(500).json({ error: "Failed to create video" });
+    }
+  });
+
+  app.patch("/api/videos/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+      const video = await storage.updateVideo(id, userId, req.body);
+      if (!video) return res.status(404).json({ error: "Video not found" });
+      res.json(video);
+    } catch (error) {
+      console.error("Error updating video:", error);
+      res.status(500).json({ error: "Failed to update video" });
+    }
+  });
+
+  app.delete("/api/videos/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+      await storage.deleteVideo(id, userId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting video:", error);
+      res.status(500).json({ error: "Failed to delete video" });
+    }
+  });
+
+  app.get("/api/videos/export", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const vids = await storage.getVideosByUser(userId);
+
+      const headers = [
+        "Title", "Platform", "Link", "Script", "Views", "Likes", "Comments",
+        "Shares", "Saves", "Accounts Reached", "Watch Time", "Avg Watch Time",
+        "Skip Rate", "Interactions", "Profile Activity", "Day 1 Views",
+        "Day 2 Views", "Day 3 Views", "Week 1 Views", "Successful", "Key Points", "Posted At", "Created At"
+      ];
+
+      const escapeCSV = (val: any) => {
+        if (val === null || val === undefined) return "";
+        const str = String(val);
+        if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      };
+
+      const rows = vids.map((v) => [
+        v.title, v.platform, v.link, v.script, v.views, v.likes, v.comments,
+        v.shares, v.saves, v.accountsReached, v.watchTime, v.avgWatchTime,
+        v.skipRate, v.interactions, v.profileActivity, v.day1Views,
+        v.day2Views, v.day3Views, v.week1Views,
+        v.isSuccessful === null ? "Pending" : v.isSuccessful ? "Yes" : "No",
+        v.keyPoints, v.postedAt, v.createdAt
+      ].map(escapeCSV).join(","));
+
+      const csv = [headers.join(","), ...rows].join("\n");
+
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", "attachment; filename=videos_export.csv");
+      res.send(csv);
+    } catch (error) {
+      console.error("Error exporting videos:", error);
+      res.status(500).json({ error: "Failed to export videos" });
+    }
+  });
+
+  app.get("/api/conversations", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const convs = await storage.getConversationsByUser(userId);
+      res.json(convs);
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+      res.status(500).json({ error: "Failed to fetch conversations" });
+    }
+  });
+
+  app.get("/api/conversations/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+      const conv = await storage.getConversation(id, userId);
+      if (!conv) return res.status(404).json({ error: "Conversation not found" });
+      const msgs = await storage.getMessagesByConversation(id);
+      res.json({ ...conv, messages: msgs });
+    } catch (error) {
+      console.error("Error fetching conversation:", error);
+      res.status(500).json({ error: "Failed to fetch conversation" });
+    }
+  });
+
+  app.post("/api/conversations", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const conv = await storage.createConversation({ userId, title: req.body.title || "New Chat" });
+      res.status(201).json(conv);
+    } catch (error) {
+      console.error("Error creating conversation:", error);
+      res.status(500).json({ error: "Failed to create conversation" });
+    }
+  });
+
+  app.delete("/api/conversations/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+      await storage.deleteConversation(id, userId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting conversation:", error);
+      res.status(500).json({ error: "Failed to delete conversation" });
+    }
+  });
+
+  app.post("/api/conversations/:id/messages", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const conversationId = parseInt(req.params.id);
+      const { content } = req.body;
+
+      const conv = await storage.getConversation(conversationId, userId);
+      if (!conv) return res.status(404).json({ error: "Conversation not found" });
+
+      await storage.createMessage({ conversationId, role: "user", content });
+
+      const existingMessages = await storage.getMessagesByConversation(conversationId);
+
+      const userVideos = await storage.getVideosByUser(userId);
+      let videoContext = "";
+      if (userVideos.length > 0) {
+        const videoSummaries = userVideos.slice(0, 20).map((v) => {
+          let summary = `- "${v.title}" (${v.platform})`;
+          if (v.views) summary += ` | ${v.views} views`;
+          if (v.likes) summary += `, ${v.likes} likes`;
+          if (v.skipRate !== null) summary += `, ${v.skipRate}% skip rate`;
+          if (v.isSuccessful !== null) summary += ` | ${v.isSuccessful ? "HIT" : "MISS"}`;
+          if (v.keyPoints) summary += ` | Notes: ${v.keyPoints}`;
+          return summary;
+        });
+        videoContext = `\n\nUSER'S VIDEO LIBRARY (${userVideos.length} videos):\n${videoSummaries.join("\n")}`;
+      }
+
+      const chatMessages = existingMessages.map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      }));
+
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+
+      const stream = anthropic.messages.stream({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 4096,
+        system: SYSTEM_PROMPT + videoContext,
+        messages: chatMessages,
+      });
+
+      let fullResponse = "";
+
+      for await (const event of stream) {
+        if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+          const text = event.delta.text;
+          if (text) {
+            fullResponse += text;
+            res.write(`data: ${JSON.stringify({ content: text })}\n\n`);
+          }
+        }
+      }
+
+      await storage.createMessage({ conversationId, role: "assistant", content: fullResponse });
+
+      if (existingMessages.length <= 1 && fullResponse.length > 0) {
+        const titleSnippet = content.length > 40 ? content.slice(0, 40) + "..." : content;
+        await storage.updateConversation(conversationId, userId, titleSnippet);
+      }
+
+      res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+      res.end();
+    } catch (error) {
+      console.error("Error in chat:", error);
+      if (res.headersSent) {
+        res.write(`data: ${JSON.stringify({ error: "An error occurred" })}\n\n`);
+        res.end();
+      } else {
+        res.status(500).json({ error: "Failed to send message" });
+      }
+    }
+  });
 
   return httpServer;
 }
