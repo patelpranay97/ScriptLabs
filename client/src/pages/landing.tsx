@@ -9,7 +9,7 @@ export default function Landing() {
           <div className="flex items-center justify-center w-8 h-8 rounded-md bg-primary">
             <Zap className="w-4 h-4 text-primary-foreground" />
           </div>
-          <span className="text-lg font-semibold tracking-tight">ViralCoach</span>
+          <span className="text-lg font-semibold tracking-tight">ScriptLabs</span>
         </div>
         <a href="/api/login">
           <Button data-testid="button-login">Sign In</Button>
@@ -66,7 +66,7 @@ export default function Landing() {
       </main>
 
       <footer className="border-t px-6 py-4 text-center text-sm text-muted-foreground">
-        ViralCoach - Your AI Content Strategy Partner
+        ScriptLabs - AI-Powered Content Strategy
       </footer>
     </div>
   );

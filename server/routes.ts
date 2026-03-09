@@ -7,7 +7,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { insertVideoSchema } from "@shared/schema";
 import { z } from "zod";
 
-const SYSTEM_PROMPT = `You are ViralCoach, an expert AI content strategy coach specializing in social media growth. You help creators craft viral content by analyzing scripts, reviewing video performance, and building their unique "Virality DNA."
+const SYSTEM_PROMPT = `You are ScriptLabs AI, an expert AI content strategy coach specializing in social media growth. You help creators craft viral content by analyzing scripts, reviewing video performance, and building their unique "Virality DNA."
 
 Your expertise includes:
 - Script writing and analysis for short-form video content (Reels, TikToks, Shorts)

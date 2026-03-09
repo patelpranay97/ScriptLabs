@@ -79,7 +79,7 @@ export function AppSidebar() {
             <div className="flex items-center justify-center w-8 h-8 rounded-md bg-primary">
               <Zap className="w-4 h-4 text-primary-foreground" />
             </div>
-            <span className="text-lg font-semibold tracking-tight">ViralCoach</span>
+            <span className="text-lg font-semibold tracking-tight">ScriptLabs</span>
           </div>
         </Link>
       </SidebarHeader>
