@@ -1,4 +1,4 @@
-# ViralCoach - AI Content Strategy Platform
+# ScriptLabs - AI Content Strategy Platform
 
 ## Overview
 An AI-powered social media content coaching platform where creators chat with a Claude-powered AI coach to analyze scripts, track video performance, and build their personalized "Virality DNA." The platform helps users grow their social media following through data-driven content strategy.
