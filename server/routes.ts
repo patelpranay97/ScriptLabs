@@ -410,9 +410,10 @@ Keep the analysis concise and actionable — the creator will use these patterns
           if (v.skipRate !== null) summary += `, ${v.skipRate}% skip rate`;
           if (v.isSuccessful !== null) summary += ` | ${v.isSuccessful ? "HIT" : "MISS"}`;
           if (v.keyPoints) summary += ` | Notes: ${v.keyPoints}`;
+          if (v.script) summary += `\n  Script: "${v.script.slice(0, 500)}${v.script.length > 500 ? "..." : ""}"`;
           return summary;
         });
-        videoContext = `\n\nUSER'S VIDEO LIBRARY (${userVideos.length} videos):\n${videoSummaries.join("\n")}`;
+        videoContext = `\n\nUSER'S VIDEO LIBRARY (${userVideos.length} videos):\n${videoSummaries.join("\n")}\n\nYou have access to the user's video scripts above. When they ask about their scripts, reference them directly. Analyze scripts against the Virality DNA framework when relevant.`;
       }
 
       const userProfile = await storage.getUserProfile(userId);
