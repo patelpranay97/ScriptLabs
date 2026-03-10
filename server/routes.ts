@@ -102,6 +102,72 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/videos/extract-metrics", isAuthenticated, async (req: any, res) => {
+    try {
+      const { image, mediaType } = req.body;
+      if (!image) {
+        return res.status(400).json({ error: "No image provided" });
+      }
+
+      const response = await anthropic.messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1024,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: mediaType || "image/png",
+                  data: image,
+                },
+              },
+              {
+                type: "text",
+                text: `Analyze this social media insights/analytics screenshot and extract all visible metrics. Return a JSON object with ONLY the fields you can find in the image. Use these exact field names:
+
+- "title": the video/post title if visible
+- "views": total views (number only)
+- "likes": total likes (number only)
+- "comments": total comments (number only)
+- "shares": total shares/sends (number only)
+- "saves": total saves/bookmarks (number only)
+- "accountsReached": accounts reached (number only)
+- "watchTime": total watch time as a string (e.g. "13h 54m 12s")
+- "avgWatchTime": average watch time as a string (e.g. "18sec")
+- "skipRate": skip rate as a number (e.g. 56.1)
+- "interactions": total interactions (number only)
+- "profileActivity": profile activity/visits (number only)
+- "platform": the platform if identifiable ("instagram", "tiktok", "youtube", "twitter", "facebook")
+
+Only include fields where you can clearly read the value from the screenshot. For numeric fields, return just the number without commas or formatting. Return ONLY valid JSON, no other text.`,
+              },
+            ],
+          },
+        ],
+      });
+
+      const textBlock = response.content.find((b) => b.type === "text");
+      if (!textBlock || textBlock.type !== "text") {
+        return res.status(500).json({ error: "No response from AI" });
+      }
+
+      let jsonStr = textBlock.text.trim();
+      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        jsonStr = jsonMatch[0];
+      }
+
+      const metrics = JSON.parse(jsonStr);
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error extracting metrics:", error);
+      res.status(500).json({ error: "Failed to extract metrics from screenshot" });
+    }
+  });
+
   app.get("/api/videos/export", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

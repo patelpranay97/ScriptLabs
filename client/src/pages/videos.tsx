@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,6 +46,10 @@ import {
   Video,
   ExternalLink,
   Search,
+  Upload,
+  Camera,
+  Loader2,
+  CheckCircle2,
 } from "lucide-react";
 import type { Video as VideoType, InsertVideo } from "@shared/schema";
 
@@ -251,6 +255,12 @@ function AddVideoForm({
   onSubmit: (data: Partial<InsertVideo>) => void;
   isSubmitting: boolean;
 }) {
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractedFields, setExtractedFields] = useState<Set<string>>(new Set());
+  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+
   const [formData, setFormData] = useState({
     title: "",
     link: "",
@@ -274,6 +284,72 @@ function AddVideoForm({
     isSuccessful: null as boolean | null,
     keyPoints: "",
   });
+
+  const handleScreenshotUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please upload an image file.", variant: "destructive" });
+      return;
+    }
+
+    setIsExtracting(true);
+    setScreenshotPreview(URL.createObjectURL(file));
+
+    try {
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split(",")[1]);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const res = await fetch("/api/videos/extract-metrics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ image: base64, mediaType: file.type }),
+      });
+
+      if (!res.ok) throw new Error("Failed to extract");
+
+      const metrics = await res.json();
+      const filled = new Set<string>();
+
+      setFormData((prev) => {
+        const updated = { ...prev };
+        if (metrics.title && !prev.title) { updated.title = metrics.title; filled.add("title"); }
+        if (metrics.platform) { updated.platform = metrics.platform; filled.add("platform"); }
+        if (metrics.views !== undefined) { updated.views = String(metrics.views); filled.add("views"); }
+        if (metrics.likes !== undefined) { updated.likes = String(metrics.likes); filled.add("likes"); }
+        if (metrics.comments !== undefined) { updated.comments = String(metrics.comments); filled.add("comments"); }
+        if (metrics.shares !== undefined) { updated.shares = String(metrics.shares); filled.add("shares"); }
+        if (metrics.saves !== undefined) { updated.saves = String(metrics.saves); filled.add("saves"); }
+        if (metrics.accountsReached !== undefined) { updated.accountsReached = String(metrics.accountsReached); filled.add("accountsReached"); }
+        if (metrics.watchTime) { updated.watchTime = metrics.watchTime; filled.add("watchTime"); }
+        if (metrics.avgWatchTime) { updated.avgWatchTime = metrics.avgWatchTime; filled.add("avgWatchTime"); }
+        if (metrics.skipRate !== undefined) { updated.skipRate = String(metrics.skipRate); filled.add("skipRate"); }
+        if (metrics.interactions !== undefined) { updated.interactions = String(metrics.interactions); filled.add("interactions"); }
+        if (metrics.profileActivity !== undefined) { updated.profileActivity = String(metrics.profileActivity); filled.add("profileActivity"); }
+        return updated;
+      });
+
+      setExtractedFields(filled);
+      toast({
+        title: "Metrics extracted",
+        description: `Auto-filled ${filled.size} field${filled.size !== 1 ? "s" : ""} from your screenshot.`,
+      });
+    } catch {
+      toast({ title: "Extraction failed", description: "Could not read metrics from that screenshot. Try a clearer image or fill in manually.", variant: "destructive" });
+    } finally {
+      setIsExtracting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -305,10 +381,75 @@ function AddVideoForm({
 
   const update = (field: string, value: string | boolean | null) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    setExtractedFields((prev) => { const next = new Set(prev); next.delete(field); return next; });
   };
+
+  const isHighlighted = (field: string) => extractedFields.has(field);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      <div
+        className={`relative rounded-md border-2 border-dashed p-4 text-center transition-colors ${
+          isExtracting ? "border-primary/50 bg-primary/5" : "border-border"
+        }`}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleScreenshotUpload}
+          className="hidden"
+          data-testid="input-screenshot-upload"
+        />
+        {isExtracting ? (
+          <div className="flex flex-col items-center gap-2 py-2">
+            <Loader2 className="w-6 h-6 text-primary animate-spin" />
+            <p className="text-sm font-medium text-primary">Analyzing screenshot...</p>
+            <p className="text-xs text-muted-foreground">AI is reading your metrics</p>
+          </div>
+        ) : screenshotPreview && extractedFields.size > 0 ? (
+          <div className="flex items-center gap-3">
+            <img
+              src={screenshotPreview}
+              alt="Uploaded screenshot"
+              className="w-16 h-16 object-cover rounded-md border"
+            />
+            <div className="flex-1 text-left">
+              <div className="flex items-center gap-1.5 text-sm font-medium text-green-600 dark:text-green-400">
+                <CheckCircle2 className="w-4 h-4" />
+                {extractedFields.size} metrics extracted
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Fields highlighted below were auto-filled. You can edit them.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              data-testid="button-upload-another-screenshot"
+            >
+              <Camera className="w-3.5 h-3.5 mr-1" />
+              New Screenshot
+            </Button>
+          </div>
+        ) : (
+          <div
+            className="flex flex-col items-center gap-2 py-2 cursor-pointer"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
+              <Camera className="w-5 h-5 text-primary" />
+            </div>
+            <p className="text-sm font-medium">Upload Metrics Screenshot</p>
+            <p className="text-xs text-muted-foreground max-w-xs">
+              Upload a screenshot of your Instagram Insights, TikTok Analytics, or YouTube Studio and AI will auto-fill the metrics below
+            </p>
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="title">Video Title *</Label>
@@ -318,6 +459,7 @@ function AddVideoForm({
             onChange={(e) => update("title", e.target.value)}
             placeholder="e.g. Day 9 of Building my own brand"
             required
+            className={isHighlighted("title") ? "ring-2 ring-green-500/30 border-green-500/50" : ""}
             data-testid="input-video-title"
           />
         </div>
@@ -334,7 +476,7 @@ function AddVideoForm({
         <div className="space-y-1.5">
           <Label htmlFor="platform">Platform</Label>
           <Select value={formData.platform} onValueChange={(v) => update("platform", v)}>
-            <SelectTrigger data-testid="select-platform">
+            <SelectTrigger data-testid="select-platform" className={isHighlighted("platform") ? "ring-2 ring-green-500/30 border-green-500/50" : ""}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -363,11 +505,11 @@ function AddVideoForm({
       <div>
         <p className="text-sm font-medium mb-3">Performance Metrics</p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <MetricInput icon={<Eye className="w-3.5 h-3.5" />} label="Views" value={formData.views} onChange={(v) => update("views", v)} testId="input-metric-views" />
-          <MetricInput icon={<Heart className="w-3.5 h-3.5" />} label="Likes" value={formData.likes} onChange={(v) => update("likes", v)} testId="input-metric-likes" />
-          <MetricInput icon={<MessageSquare className="w-3.5 h-3.5" />} label="Comments" value={formData.comments} onChange={(v) => update("comments", v)} testId="input-metric-comments" />
-          <MetricInput icon={<Share2 className="w-3.5 h-3.5" />} label="Shares" value={formData.shares} onChange={(v) => update("shares", v)} testId="input-metric-shares" />
-          <MetricInput icon={<Bookmark className="w-3.5 h-3.5" />} label="Saves" value={formData.saves} onChange={(v) => update("saves", v)} testId="input-metric-saves" />
+          <MetricInput icon={<Eye className="w-3.5 h-3.5" />} label="Views" value={formData.views} onChange={(v) => update("views", v)} testId="input-metric-views" highlighted={isHighlighted("views")} />
+          <MetricInput icon={<Heart className="w-3.5 h-3.5" />} label="Likes" value={formData.likes} onChange={(v) => update("likes", v)} testId="input-metric-likes" highlighted={isHighlighted("likes")} />
+          <MetricInput icon={<MessageSquare className="w-3.5 h-3.5" />} label="Comments" value={formData.comments} onChange={(v) => update("comments", v)} testId="input-metric-comments" highlighted={isHighlighted("comments")} />
+          <MetricInput icon={<Share2 className="w-3.5 h-3.5" />} label="Shares" value={formData.shares} onChange={(v) => update("shares", v)} testId="input-metric-shares" highlighted={isHighlighted("shares")} />
+          <MetricInput icon={<Bookmark className="w-3.5 h-3.5" />} label="Saves" value={formData.saves} onChange={(v) => update("saves", v)} testId="input-metric-saves" highlighted={isHighlighted("saves")} />
           <div className="space-y-1.5">
             <Label className="text-xs">Skip Rate (%)</Label>
             <Input
@@ -376,6 +518,7 @@ function AddVideoForm({
               value={formData.skipRate}
               onChange={(e) => update("skipRate", e.target.value)}
               placeholder="e.g. 56.1"
+              className={isHighlighted("skipRate") ? "ring-2 ring-green-500/30 border-green-500/50" : ""}
               data-testid="input-metric-skip-rate"
             />
           </div>
@@ -407,11 +550,11 @@ function AddVideoForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label className="text-xs">Watch Time</Label>
-          <Input value={formData.watchTime} onChange={(e) => update("watchTime", e.target.value)} placeholder="e.g. 13h 54m 12s" data-testid="input-watch-time" />
+          <Input value={formData.watchTime} onChange={(e) => update("watchTime", e.target.value)} placeholder="e.g. 13h 54m 12s" className={isHighlighted("watchTime") ? "ring-2 ring-green-500/30 border-green-500/50" : ""} data-testid="input-watch-time" />
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Avg Watch Time</Label>
-          <Input value={formData.avgWatchTime} onChange={(e) => update("avgWatchTime", e.target.value)} placeholder="e.g. 18sec" data-testid="input-avg-watch-time" />
+          <Input value={formData.avgWatchTime} onChange={(e) => update("avgWatchTime", e.target.value)} placeholder="e.g. 18sec" className={isHighlighted("avgWatchTime") ? "ring-2 ring-green-500/30 border-green-500/50" : ""} data-testid="input-avg-watch-time" />
         </div>
       </div>
 
@@ -464,12 +607,14 @@ function MetricInput({
   value,
   onChange,
   testId,
+  highlighted,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   onChange: (v: string) => void;
   testId: string;
+  highlighted?: boolean;
 }) {
   return (
     <div className="space-y-1.5">
@@ -481,6 +626,7 @@ function MetricInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="0"
+        className={highlighted ? "ring-2 ring-green-500/30 border-green-500/50" : ""}
         data-testid={testId}
       />
     </div>
