@@ -1,4 +1,4 @@
-import iconImg from "@assets/IMG_7545_1773122509623.png";
+import iconImg from "@assets/IMG_7546_1773122756611.png";
 
 export function ScriptLabsLogo({ iconSize = 32, className = "" }: { iconSize?: number; className?: string }) {
   return (
