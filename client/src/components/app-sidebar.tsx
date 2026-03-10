@@ -6,9 +6,9 @@ import {
   LogOut,
   Plus,
   Trash2,
+  Zap,
   FlaskConical,
 } from "lucide-react";
-import logoImg from "@assets/C5D6A3E8-825E-405F-BBAA-3E75D3F41AC5_1773121489614.png";
 import {
   Sidebar,
   SidebarContent,
@@ -78,7 +78,10 @@ export function AppSidebar() {
       <SidebarHeader className="p-4">
         <Link href="/">
           <div className="flex items-center gap-2 cursor-pointer" data-testid="link-home-logo">
-            <img src={logoImg} alt="ScriptLabs" className="h-8 w-auto" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-md bg-primary">
+              <Zap className="w-4 h-4 text-primary-foreground" />
+            </div>
+            <span className="text-lg font-semibold tracking-tight">ScriptLabs</span>
           </div>
         </Link>
       </SidebarHeader>
