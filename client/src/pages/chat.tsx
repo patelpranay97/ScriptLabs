@@ -8,9 +8,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-auth";
-import { Send, Zap, Loader2, MessageSquare } from "lucide-react";
+import { Send, Loader2, MessageSquare } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import iconImg from "@assets/IMG_7546_1773122756611.png";
 import type { Conversation, Message } from "@shared/schema";
 
 export default function Chat() {
@@ -43,7 +44,7 @@ function ChatEmpty({ onNewChat }: { onNewChat: (msg?: string) => void }) {
   return (
     <div className="flex flex-col items-center justify-center h-full text-center px-6">
       <div className="flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-6">
-        <Zap className="w-8 h-8 text-primary" />
+        <img src={iconImg} alt="ScriptLabs" className="w-10 h-10" />
       </div>
       <h2 className="text-xl font-semibold mb-2">ScriptLabs AI</h2>
       <p className="text-muted-foreground max-w-md mb-6 text-sm leading-relaxed">
@@ -247,8 +248,8 @@ function ChatConversation({ conversationId }: { conversationId: number }) {
           {isStreaming && !streamingContent && (
             <div className="flex items-start gap-3">
               <Avatar className="h-7 w-7 shrink-0 mt-0.5">
-                <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                  <Zap className="w-3.5 h-3.5" />
+                <AvatarFallback className="bg-primary/10 p-0.5">
+                  <img src={iconImg} alt="ScriptLabs" className="w-full h-full" />
                 </AvatarFallback>
               </Avatar>
               <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
@@ -303,8 +304,8 @@ function MessageBubble({
   return (
     <div className={`flex items-start gap-3 ${isUser ? "flex-row-reverse" : ""}`} data-testid={`message-${role}`}>
       <Avatar className="h-7 w-7 shrink-0 mt-0.5">
-        <AvatarFallback className={`text-xs ${isUser ? "bg-muted" : "bg-primary/10 text-primary"}`}>
-          {isUser ? userInitials : <Zap className="w-3.5 h-3.5" />}
+        <AvatarFallback className={`text-xs ${isUser ? "bg-muted" : "bg-primary/10 p-0.5"}`}>
+          {isUser ? userInitials : <img src={iconImg} alt="ScriptLabs" className="w-full h-full" />}
         </AvatarFallback>
       </Avatar>
       <div
