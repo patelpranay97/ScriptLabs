@@ -6,9 +6,9 @@ import {
   LogOut,
   Plus,
   Trash2,
-  Zap,
   FlaskConical,
 } from "lucide-react";
+import { ScriptLabsLogo } from "@/components/scriptlabs-logo";
 import {
   Sidebar,
   SidebarContent,
@@ -77,11 +77,8 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="p-4">
         <Link href="/">
-          <div className="flex items-center gap-2 cursor-pointer" data-testid="link-home-logo">
-            <div className="flex items-center justify-center w-8 h-8 rounded-md bg-primary">
-              <Zap className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <span className="text-lg font-semibold tracking-tight">ScriptLabs</span>
+          <div className="cursor-pointer" data-testid="link-home-logo">
+            <ScriptLabsLogo iconSize={32} />
           </div>
         </Link>
       </SidebarHeader>

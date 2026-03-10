@@ -1,16 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Zap, MessageSquare, BarChart3, TrendingUp, ArrowRight } from "lucide-react";
+import { ScriptLabsLogo } from "@/components/scriptlabs-logo";
 
 export default function Landing() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="flex items-center justify-between gap-2 px-6 py-4 border-b">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center justify-center w-8 h-8 rounded-md bg-primary">
-            <Zap className="w-4 h-4 text-primary-foreground" />
-          </div>
-          <span className="text-lg font-semibold tracking-tight">ScriptLabs</span>
-        </div>
+        <ScriptLabsLogo iconSize={32} />
         <a href="/api/login">
           <Button data-testid="button-login">Sign In</Button>
         </a>
