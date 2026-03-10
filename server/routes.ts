@@ -110,7 +110,7 @@ export async function registerRoutes(
       }
 
       const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-6",
+        model: "claude-sonnet-4-5",
         max_tokens: 1024,
         messages: [
           {
@@ -273,7 +273,7 @@ Based on this data, generate their personal Virality DNA. This should be specifi
 Format this as a concise, actionable DNA profile (under 400 words) that can guide future script writing. Be specific and reference their actual videos/patterns. Write it as bullet points under clear categories.`;
 
       const dnaResponse = await anthropic.messages.create({
-        model: "claude-sonnet-4-6",
+        model: "claude-sonnet-4-5",
         max_tokens: 1024,
         messages: [{ role: "user", content: dnaPrompt }],
       });
@@ -356,7 +356,7 @@ Format this as a concise, actionable DNA profile (under 400 words) that can guid
       if (!script) return res.status(404).json({ error: "Script not found" });
 
       const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-6",
+        model: "claude-sonnet-4-5",
         max_tokens: 2048,
         messages: [
           {
@@ -517,7 +517,7 @@ Keep the analysis concise and actionable — the creator will use these patterns
       res.setHeader("Connection", "keep-alive");
 
       const stream = anthropic.messages.stream({
-        model: "claude-sonnet-4-6",
+        model: "claude-sonnet-4-5",
         max_tokens: 4096,
         system: SYSTEM_PROMPT + profileContext + dnaContext + videoContext + refContext,
         messages: chatMessages,
