@@ -48,7 +48,8 @@ export async function registerRoutes(
   registerAuthRoutes(app);
 
   const anthropic = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
+    apiKey: process.env.ANTHROPIC_API_KEY || process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
+    baseURL: process.env.ANTHROPIC_API_KEY ? undefined : process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
   });
 
   app.get("/api/videos", isAuthenticated, async (req: any, res) => {
