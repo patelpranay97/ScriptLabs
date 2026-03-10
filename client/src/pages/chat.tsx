@@ -9,6 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-auth";
 import { Send, Zap, Loader2, MessageSquare } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { Conversation, Message } from "@shared/schema";
 
 export default function Chat() {
@@ -306,13 +308,17 @@ function MessageBubble({
         </AvatarFallback>
       </Avatar>
       <div
-        className={`rounded-md px-4 py-2.5 max-w-[85%] text-sm leading-relaxed whitespace-pre-wrap ${
+        className={`rounded-md px-4 py-2.5 max-w-[85%] text-sm leading-relaxed ${
           isUser
-            ? "bg-primary text-primary-foreground"
-            : "bg-card border"
+            ? "bg-primary text-primary-foreground whitespace-pre-wrap"
+            : "bg-card border prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-table:my-2 prose-hr:my-2"
         }`}
       >
-        {content}
+        {isUser ? (
+          content
+        ) : (
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+        )}
         {isStreaming && (
           <span className="inline-block w-1.5 h-4 bg-current ml-0.5 animate-pulse" />
         )}

@@ -37,7 +37,18 @@ COACHING APPROACH:
 
 When a user provides video data context, analyze it carefully and reference specific metrics in your advice. If they mention multiple videos, look for patterns across their content library.
 
-Keep responses conversational, actionable, and focused. You're a coach, not a lecturer.`;
+Keep responses conversational, actionable, and focused. You're a coach, not a lecturer.
+
+FORMATTING RULES:
+- Write in a natural, conversational tone — like texting a smart friend
+- Use short paragraphs (2-3 sentences max)
+- Use bold sparingly for key takeaways only
+- Use bullet points for lists, but keep them brief
+- NEVER use markdown tables — present data in simple bullet lists instead
+- NEVER use markdown headers (## or ###) — use bold text or line breaks to separate sections
+- Avoid horizontal rules (---)
+- Use emojis sparingly — one or two per response max
+- Keep responses concise and scannable on mobile`;
 
 export async function registerRoutes(
   httpServer: Server,
