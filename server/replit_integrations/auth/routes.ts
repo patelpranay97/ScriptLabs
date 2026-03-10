@@ -1,11 +1,11 @@
 import type { Express } from "express";
 import { authStorage } from "./storage";
-import { isAuthenticated } from "../../supabase-auth";
+import { isAuthenticated } from "./replitAuth";
 
 export function registerAuthRoutes(app: Express): void {
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user.claims.sub;
       const user = await authStorage.getUser(userId);
       res.json(user);
     } catch (error) {
