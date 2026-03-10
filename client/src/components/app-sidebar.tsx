@@ -7,6 +7,7 @@ import {
   Plus,
   Trash2,
   Zap,
+  FlaskConical,
 } from "lucide-react";
 import {
   Sidebar,
@@ -32,6 +33,7 @@ import type { Conversation } from "@shared/schema";
 const navItems = [
   { title: "Dashboard", url: "/", icon: BarChart3 },
   { title: "Videos", url: "/videos", icon: Video },
+  { title: "Script Lab", url: "/scripts", icon: FlaskConical },
   { title: "Chat", url: "/chat", icon: MessageSquare },
 ];
 

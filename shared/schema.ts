@@ -50,6 +50,30 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
+export const userProfiles = pgTable("user_profiles", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().unique(),
+  niche: text("niche"),
+  platforms: text("platforms").array(),
+  goals: text("goals"),
+  inspirationCreators: text("inspiration_creators").array(),
+  onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const referenceScripts = pgTable("reference_scripts", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  creatorHandle: text("creator_handle").notNull(),
+  creatorName: text("creator_name"),
+  videoLink: text("video_link"),
+  platform: text("platform").notNull().default("instagram"),
+  transcript: text("transcript").notNull(),
+  aiAnalysis: text("ai_analysis"),
+  tags: text("tags").array(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
 export const insertVideoSchema = createInsertSchema(videos).omit({
   id: true,
   createdAt: true,
@@ -66,9 +90,23 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
   createdAt: true,
 });
 
+export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertReferenceScriptSchema = createInsertSchema(referenceScripts).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type Video = typeof videos.$inferSelect;
 export type InsertVideo = z.infer<typeof insertVideoSchema>;
 export type Conversation = typeof conversations.$inferSelect;
 export type InsertConversation = z.infer<typeof insertConversationSchema>;
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type UserProfile = typeof userProfiles.$inferSelect;
+export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
+export type ReferenceScript = typeof referenceScripts.$inferSelect;
+export type InsertReferenceScript = z.infer<typeof insertReferenceScriptSchema>;

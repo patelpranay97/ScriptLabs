@@ -2,12 +2,18 @@ import {
   videos,
   conversations,
   messages,
+  userProfiles,
+  referenceScripts,
   type Video,
   type InsertVideo,
   type Conversation,
   type InsertConversation,
   type Message,
   type InsertMessage,
+  type UserProfile,
+  type InsertUserProfile,
+  type ReferenceScript,
+  type InsertReferenceScript,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
@@ -27,6 +33,15 @@ export interface IStorage {
 
   getMessagesByConversation(conversationId: number): Promise<Message[]>;
   createMessage(data: InsertMessage): Promise<Message>;
+
+  getUserProfile(userId: string): Promise<UserProfile | undefined>;
+  upsertUserProfile(data: InsertUserProfile): Promise<UserProfile>;
+
+  getReferenceScripts(userId: string): Promise<ReferenceScript[]>;
+  getReferenceScript(id: number, userId: string): Promise<ReferenceScript | undefined>;
+  createReferenceScript(data: InsertReferenceScript): Promise<ReferenceScript>;
+  updateReferenceScript(id: number, userId: string, data: Partial<InsertReferenceScript>): Promise<ReferenceScript | undefined>;
+  deleteReferenceScript(id: number, userId: string): Promise<void>;
 }
 
 class DatabaseStorage implements IStorage {
@@ -94,6 +109,52 @@ class DatabaseStorage implements IStorage {
   async createMessage(data: InsertMessage): Promise<Message> {
     const [msg] = await db.insert(messages).values(data).returning();
     return msg;
+  }
+
+  async getUserProfile(userId: string): Promise<UserProfile | undefined> {
+    const [profile] = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId));
+    return profile;
+  }
+
+  async upsertUserProfile(data: InsertUserProfile): Promise<UserProfile> {
+    const existing = await this.getUserProfile(data.userId);
+    if (existing) {
+      const [profile] = await db
+        .update(userProfiles)
+        .set(data)
+        .where(eq(userProfiles.userId, data.userId))
+        .returning();
+      return profile;
+    }
+    const [profile] = await db.insert(userProfiles).values(data).returning();
+    return profile;
+  }
+
+  async getReferenceScripts(userId: string): Promise<ReferenceScript[]> {
+    return db.select().from(referenceScripts).where(eq(referenceScripts.userId, userId)).orderBy(desc(referenceScripts.createdAt));
+  }
+
+  async getReferenceScript(id: number, userId: string): Promise<ReferenceScript | undefined> {
+    const [script] = await db.select().from(referenceScripts).where(and(eq(referenceScripts.id, id), eq(referenceScripts.userId, userId)));
+    return script;
+  }
+
+  async createReferenceScript(data: InsertReferenceScript): Promise<ReferenceScript> {
+    const [script] = await db.insert(referenceScripts).values(data).returning();
+    return script;
+  }
+
+  async updateReferenceScript(id: number, userId: string, data: Partial<InsertReferenceScript>): Promise<ReferenceScript | undefined> {
+    const [script] = await db
+      .update(referenceScripts)
+      .set(data)
+      .where(and(eq(referenceScripts.id, id), eq(referenceScripts.userId, userId)))
+      .returning();
+    return script;
+  }
+
+  async deleteReferenceScript(id: number, userId: string): Promise<void> {
+    await db.delete(referenceScripts).where(and(eq(referenceScripts.id, id), eq(referenceScripts.userId, userId)));
   }
 }
 
