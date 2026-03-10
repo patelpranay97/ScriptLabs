@@ -16,24 +16,14 @@ Your expertise includes:
 - Identifying patterns in successful vs unsuccessful content
 - Building personalized content strategies based on data
 
-THE VIRALITY DNA FRAMEWORK:
-When helping users craft content, reference these proven elements:
-1. Start Midstream - Drop viewers directly into a memory, thought, or emotional situation. No setup or introductions.
-2. Use Specific Cultural Anchors - Details that trigger nostalgia: names, foods, locations, products, language. Be specific, not generic.
-3. Introduce Tension Early - Include clear internal or external pressure: embarrassment, cultural clash, identity conflict, parental expectations.
-4. Include a Clear Emotional Shift - Childhood vs adult perspective. Moment of clarity, understanding, humor, or soft contradiction.
-5. First Payoff by 20-25 Seconds - First emotional or narrative payoff should land here to retain attention.
-6. End with Poetic, Not Preachy, Reflection - Don't moralize. Use soft emotional bow: nostalgia, irony, or quiet pride.
-7. Optional but Powerful: Sensory Moments - Add one sensory visual: a smell, sound, or texture that makes the story feel real.
-
 COACHING APPROACH:
-- When a user shares a script, analyze it against the Virality DNA elements
+- When a user shares a script, analyze it against their Virality DNA (personal or starter framework)
 - When performance data is shared, identify what worked and what didn't
 - Ask probing questions to understand the creator's niche and audience
 - Be encouraging but honest - point out weaknesses constructively
 - Reference their past videos when they share performance data to build on patterns
 - Remind users to track their metrics after posting (Day 1, Day 2, Day 3, Week 1)
-- Help them build their personalized Virality DNA over time
+- Actively help them discover patterns and build their personalized Virality DNA over time
 
 When a user provides video data context, analyze it carefully and reference specific metrics in your advice. If they mention multiple videos, look for patterns across their content library.
 
@@ -246,6 +236,68 @@ Only include fields where you can clearly read the value from the screenshot. Fo
     }
   });
 
+  app.post("/api/profile/generate-dna", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const userVideos = await storage.getVideosByUser(userId);
+      const ratedVideos = userVideos.filter((v) => v.isSuccessful !== null);
+
+      if (ratedVideos.length < 5) {
+        return res.json({ ready: false, count: ratedVideos.length, needed: 5 });
+      }
+
+      const videoDetails = ratedVideos.map((v) => {
+        let detail = `Title: "${v.title}" | Platform: ${v.platform} | Result: ${v.isSuccessful ? "HIT" : "MISS"}`;
+        if (v.views) detail += ` | Views: ${v.views}`;
+        if (v.likes) detail += `, Likes: ${v.likes}`;
+        if (v.skipRate !== null) detail += `, Skip Rate: ${v.skipRate}%`;
+        if (v.keyPoints) detail += `\nNotes: ${v.keyPoints}`;
+        if (v.script) detail += `\nScript: "${v.script.slice(0, 600)}${v.script.length > 600 ? "..." : ""}"`;
+        return detail;
+      }).join("\n\n");
+
+      const dnaPrompt = `You are analyzing a creator's video performance data to identify their personal Virality DNA — the specific patterns, techniques, and qualities that make THEIR content succeed or fail.
+
+Here is their video data (${ratedVideos.length} rated videos):
+
+${videoDetails}
+
+Based on this data, generate their personal Virality DNA. This should be specific to THEM — not generic advice. Identify:
+
+1. What hooks/openings worked vs didn't work for them specifically
+2. What story structures or emotional arcs performed well
+3. What topics/themes consistently hit vs miss
+4. What pacing or length patterns correlate with success
+5. Their unique strengths to lean into
+6. Specific weaknesses to avoid
+
+Format this as a concise, actionable DNA profile (under 400 words) that can guide future script writing. Be specific and reference their actual videos/patterns. Write it as bullet points under clear categories.`;
+
+      const dnaResponse = await anthropic.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1024,
+        messages: [{ role: "user", content: dnaPrompt }],
+      });
+
+      const dna = dnaResponse.content[0].type === "text" ? dnaResponse.content[0].text : "";
+      const profile = await storage.getUserProfile(userId);
+      await storage.upsertUserProfile({
+        userId,
+        niche: profile?.niche ?? null,
+        platforms: profile?.platforms ?? null,
+        goals: profile?.goals ?? null,
+        inspirationCreators: profile?.inspirationCreators ?? null,
+        onboardingCompleted: profile?.onboardingCompleted ?? false,
+        viralityDna: dna,
+      });
+
+      res.json({ ready: true, dna });
+    } catch (error) {
+      console.error("Error generating DNA:", error);
+      res.status(500).json({ error: "Failed to generate DNA" });
+    }
+  });
+
   app.get("/api/reference-scripts", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -437,6 +489,14 @@ Keep the analysis concise and actionable — the creator will use these patterns
         if (userProfile.inspirationCreators?.length) profileContext += `\n- Inspiration creators: ${userProfile.inspirationCreators.join(", ")}`;
       }
 
+      let dnaContext = "";
+      if (userProfile?.viralityDna) {
+        dnaContext = `\n\nTHIS USER'S PERSONAL VIRALITY DNA (discovered from their actual video performance data — use this instead of any generic framework):\n${userProfile.viralityDna}\n\nThis DNA is specific to them. Always reference it when writing or analyzing their scripts.`;
+      } else {
+        const ratedCount = (await storage.getVideosByUser(userId)).filter((v) => v.isSuccessful !== null).length;
+        dnaContext = `\n\nVIRALITY DNA STATUS: This user has not yet generated their personal Virality DNA (they need at least 5 rated videos — they currently have ${ratedCount}). Use the following starter framework as a guide, but actively look for patterns in their actual data and help them discover THEIR specific formula over time.\n\nSTARTER FRAMEWORK:\n1. Start Midstream - Drop viewers directly into a memory, thought, or emotional situation. No setup or introductions.\n2. Use Specific Cultural Anchors - Details that trigger nostalgia: names, foods, locations, products, language.\n3. Introduce Tension Early - Include clear internal or external pressure: embarrassment, cultural clash, identity conflict.\n4. Include a Clear Emotional Shift - Moment of clarity, understanding, humor, or soft contradiction.\n5. First Payoff by 20-25 Seconds - First emotional or narrative payoff should land here.\n6. End with Poetic, Not Preachy, Reflection - Use soft emotional bow: nostalgia, irony, or quiet pride.\n7. Sensory Moments - Add one sensory visual: a smell, sound, or texture that makes the story feel real.`;
+      }
+
       const refScripts = await storage.getReferenceScripts(userId);
       let refContext = "";
       if (refScripts.length > 0) {
@@ -460,7 +520,7 @@ Keep the analysis concise and actionable — the creator will use these patterns
       const stream = anthropic.messages.stream({
         model: "claude-sonnet-4-6",
         max_tokens: 4096,
-        system: SYSTEM_PROMPT + profileContext + videoContext + refContext,
+        system: SYSTEM_PROMPT + profileContext + dnaContext + videoContext + refContext,
         messages: chatMessages,
       });
 

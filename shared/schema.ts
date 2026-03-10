@@ -58,6 +58,7 @@ export const userProfiles = pgTable("user_profiles", {
   goals: text("goals"),
   inspirationCreators: text("inspiration_creators").array(),
   onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
+  viralityDna: text("virality_dna"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 

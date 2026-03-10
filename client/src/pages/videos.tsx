@@ -50,11 +50,13 @@ import {
   Camera,
   Loader2,
   CheckCircle2,
+  Pencil,
 } from "lucide-react";
 import type { Video as VideoType, InsertVideo } from "@shared/schema";
 
 export default function Videos() {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingVideo, setEditingVideo] = useState<VideoType | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterSuccess, setFilterSuccess] = useState<string>("all");
   const { toast } = useToast();
@@ -75,6 +77,21 @@ export default function Videos() {
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to add video.", variant: "destructive" });
+    },
+  });
+
+  const updateVideo = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<InsertVideo> }) => {
+      const res = await apiRequest("PATCH", `/api/videos/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/videos"] });
+      setEditingVideo(null);
+      toast({ title: "Video updated", description: "Your video has been updated." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update video.", variant: "destructive" });
     },
   });
 
@@ -180,6 +197,7 @@ export default function Videos() {
                   <TableHead className="text-right">Skip Rate</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                   <TableHead className="text-center">Link</TableHead>
+                  <TableHead className="text-center">Edit</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -235,6 +253,16 @@ export default function Videos() {
                         <span className="text-muted-foreground text-xs">-</span>
                       )}
                     </TableCell>
+                    <TableCell className="text-center">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => setEditingVideo(video)}
+                        data-testid={`button-edit-video-${video.id}`}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -244,6 +272,21 @@ export default function Videos() {
       ) : (
         <EmptyVideos hasSearch={searchQuery.length > 0 || filterSuccess !== "all"} />
       )}
+
+      <Dialog open={!!editingVideo} onOpenChange={(open) => { if (!open) setEditingVideo(null); }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Video</DialogTitle>
+          </DialogHeader>
+          {editingVideo && (
+            <AddVideoForm
+              initialValues={editingVideo}
+              onSubmit={(data) => updateVideo.mutate({ id: editingVideo.id, data })}
+              isSubmitting={updateVideo.isPending}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -251,9 +294,11 @@ export default function Videos() {
 function AddVideoForm({
   onSubmit,
   isSubmitting,
+  initialValues,
 }: {
   onSubmit: (data: Partial<InsertVideo>) => void;
   isSubmitting: boolean;
+  initialValues?: VideoType;
 }) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -262,27 +307,27 @@ function AddVideoForm({
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    title: "",
-    link: "",
-    platform: "instagram",
-    script: "",
-    views: "",
-    likes: "",
-    comments: "",
-    shares: "",
-    saves: "",
-    accountsReached: "",
-    watchTime: "",
-    avgWatchTime: "",
-    skipRate: "",
-    interactions: "",
-    profileActivity: "",
-    day1Views: "",
-    day2Views: "",
-    day3Views: "",
-    week1Views: "",
-    isSuccessful: null as boolean | null,
-    keyPoints: "",
+    title: initialValues?.title ?? "",
+    link: initialValues?.link ?? "",
+    platform: initialValues?.platform ?? "instagram",
+    script: initialValues?.script ?? "",
+    views: initialValues?.views != null ? String(initialValues.views) : "",
+    likes: initialValues?.likes != null ? String(initialValues.likes) : "",
+    comments: initialValues?.comments != null ? String(initialValues.comments) : "",
+    shares: initialValues?.shares != null ? String(initialValues.shares) : "",
+    saves: initialValues?.saves != null ? String(initialValues.saves) : "",
+    accountsReached: initialValues?.accountsReached != null ? String(initialValues.accountsReached) : "",
+    watchTime: initialValues?.watchTime ?? "",
+    avgWatchTime: initialValues?.avgWatchTime ?? "",
+    skipRate: initialValues?.skipRate != null ? String(initialValues.skipRate) : "",
+    interactions: initialValues?.interactions != null ? String(initialValues.interactions) : "",
+    profileActivity: initialValues?.profileActivity != null ? String(initialValues.profileActivity) : "",
+    day1Views: initialValues?.day1Views != null ? String(initialValues.day1Views) : "",
+    day2Views: initialValues?.day2Views != null ? String(initialValues.day2Views) : "",
+    day3Views: initialValues?.day3Views != null ? String(initialValues.day3Views) : "",
+    week1Views: initialValues?.week1Views != null ? String(initialValues.week1Views) : "",
+    isSuccessful: initialValues?.isSuccessful ?? null as boolean | null,
+    keyPoints: initialValues?.keyPoints ?? "",
   });
 
   const handleScreenshotUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
