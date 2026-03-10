@@ -1,4 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,7 +18,12 @@ import {
   Zap,
   ArrowRight,
   BarChart3,
+  Dna,
+  RefreshCw,
+  Lock,
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import type { UserProfile } from "@shared/schema";
 import {
   BarChart,
   Bar,
@@ -29,8 +36,28 @@ import {
 import type { Video as VideoType } from "@shared/schema";
 
 export default function Dashboard() {
+  const { toast } = useToast();
   const { data: videos, isLoading } = useQuery<VideoType[]>({
     queryKey: ["/api/videos"],
+  });
+  const { data: profile } = useQuery<UserProfile | null>({
+    queryKey: ["/api/profile"],
+  });
+
+  const generateDna = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/profile/generate-dna", {});
+      return res.json();
+    },
+    onSuccess: (data) => {
+      if (data.ready) {
+        queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+        toast({ title: "Virality DNA generated!", description: "Your personal content formula has been unlocked." });
+      }
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to generate DNA. Try again.", variant: "destructive" });
+    },
   });
 
   if (isLoading) {
@@ -55,6 +82,9 @@ export default function Dashboard() {
     })) || [];
 
   const recentVideos = videos?.slice(-5).reverse() || [];
+  const ratedVideos = videos?.filter((v) => v.isSuccessful !== null) || [];
+  const ratedCount = ratedVideos.length;
+  const DNA_THRESHOLD = 5;
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
@@ -94,6 +124,14 @@ export default function Dashboard() {
           highlight
         />
       </div>
+
+      <ViralityDnaCard
+        dna={profile?.viralityDna ?? null}
+        ratedCount={ratedCount}
+        threshold={DNA_THRESHOLD}
+        isGenerating={generateDna.isPending}
+        onGenerate={() => generateDna.mutate()}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
@@ -170,6 +208,113 @@ export default function Dashboard() {
         </Card>
       </div>
     </div>
+  );
+}
+
+function ViralityDnaCard({
+  dna,
+  ratedCount,
+  threshold,
+  isGenerating,
+  onGenerate,
+}: {
+  dna: string | null;
+  ratedCount: number;
+  threshold: number;
+  isGenerating: boolean;
+  onGenerate: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const canGenerate = ratedCount >= threshold;
+
+  return (
+    <Card className={dna ? "border-primary/30 bg-primary/5" : ""}>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Dna className="w-4 h-4 text-primary" />
+            <CardTitle className="text-base">Your Virality DNA</CardTitle>
+            {dna && <Badge variant="default" className="text-[10px] px-1.5 py-0">Unlocked</Badge>}
+          </div>
+          {dna ? (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setExpanded(!expanded)}
+                data-testid="button-toggle-dna"
+              >
+                {expanded ? "Collapse" : "View DNA"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onGenerate}
+                disabled={isGenerating}
+                data-testid="button-regenerate-dna"
+              >
+                {isGenerating ? (
+                  <><Zap className="w-3.5 h-3.5 mr-1 animate-pulse" />Analyzing...</>
+                ) : (
+                  <><RefreshCw className="w-3.5 h-3.5 mr-1" />Regenerate</>
+                )}
+              </Button>
+            </div>
+          ) : canGenerate ? (
+            <Button
+              size="sm"
+              onClick={onGenerate}
+              disabled={isGenerating}
+              data-testid="button-generate-dna"
+            >
+              {isGenerating ? (
+                <><Zap className="w-3.5 h-3.5 mr-1 animate-pulse" />Analyzing...</>
+              ) : (
+                <><Dna className="w-3.5 h-3.5 mr-1" />Generate My DNA</>
+              )}
+            </Button>
+          ) : null}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {dna ? (
+          <div>
+            <p className="text-sm text-muted-foreground mb-2">
+              Your personal content formula, built from your actual video performance data.
+            </p>
+            {expanded && (
+              <div className="mt-3 text-sm leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0.5">
+                {dna.split("\n").map((line, i) => (
+                  <p key={i} className={line.startsWith("**") || line.startsWith("#") ? "font-semibold" : ""}>
+                    {line || <br />}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Lock className="w-3.5 h-3.5 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  {canGenerate
+                    ? "You have enough rated videos to generate your personal DNA!"
+                    : `${ratedCount} / ${threshold} rated videos — mark more videos as Hit or Miss to unlock`}
+                </p>
+              </div>
+              <div className="h-2 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full bg-primary transition-all rounded-full"
+                  style={{ width: `${Math.min(100, (ratedCount / threshold) * 100)}%` }}
+                  data-testid="dna-progress-bar"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
