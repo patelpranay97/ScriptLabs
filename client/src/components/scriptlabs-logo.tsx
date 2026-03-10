@@ -4,7 +4,7 @@ export function ScriptLabsLogo({ iconSize = 32, className = "" }: { iconSize?: n
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       <img src={iconImg} alt="ScriptLabs icon" style={{ width: iconSize, height: iconSize }} />
-      <span className="font-bold tracking-tight" style={{ fontSize: iconSize * 0.75 }}>
+      <span className="font-bold tracking-tight" style={{ fontSize: iconSize * 0.65 }}>
         <span style={{ color: "#1a0a4d" }}>Script</span>
         <span
           style={{
