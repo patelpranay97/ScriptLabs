@@ -304,7 +304,8 @@ function AddVideoForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractedFields, setExtractedFields] = useState<Set<string>>(new Set());
-  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+  const [screenshotPreviews, setScreenshotPreviews] = useState<string[]>([]);
+  const [extractProgress, setExtractProgress] = useState<{ current: number; total: number } | null>(null);
 
   const [formData, setFormData] = useState({
     title: initialValues?.title ?? "",
@@ -330,68 +331,76 @@ function AddVideoForm({
     keyPoints: initialValues?.keyPoints ?? "",
   });
 
-  const handleScreenshotUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const extractBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(",")[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
 
-    if (!file.type.startsWith("image/")) {
-      toast({ title: "Invalid file", description: "Please upload an image file.", variant: "destructive" });
+  const handleScreenshotUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    const imageFiles = files.filter((f) => f.type.startsWith("image/"));
+    if (!imageFiles.length) {
+      toast({ title: "Invalid file", description: "Please upload image files.", variant: "destructive" });
       return;
     }
 
     setIsExtracting(true);
-    setScreenshotPreview(URL.createObjectURL(file));
+    setScreenshotPreviews(imageFiles.map((f) => URL.createObjectURL(f)));
+    setExtractProgress({ current: 0, total: imageFiles.length });
+
+    const allFilled = new Set<string>();
 
     try {
-      const reader = new FileReader();
-      const base64 = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => {
-          const result = reader.result as string;
-          resolve(result.split(",")[1]);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      for (let i = 0; i < imageFiles.length; i++) {
+        setExtractProgress({ current: i + 1, total: imageFiles.length });
+        const file = imageFiles[i];
+        const base64 = await extractBase64(file);
 
-      const res = await fetch("/api/videos/extract-metrics", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ image: base64, mediaType: file.type }),
-      });
+        const res = await fetch("/api/videos/extract-metrics", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ image: base64, mediaType: file.type }),
+        });
 
-      if (!res.ok) throw new Error("Failed to extract");
+        if (!res.ok) continue;
 
-      const metrics = await res.json();
-      const filled = new Set<string>();
+        const metrics = await res.json();
 
-      setFormData((prev) => {
-        const updated = { ...prev };
-        if (metrics.title && !prev.title) { updated.title = metrics.title; filled.add("title"); }
-        if (metrics.platform) { updated.platform = metrics.platform; filled.add("platform"); }
-        if (metrics.views !== undefined) { updated.views = String(metrics.views); filled.add("views"); }
-        if (metrics.likes !== undefined) { updated.likes = String(metrics.likes); filled.add("likes"); }
-        if (metrics.comments !== undefined) { updated.comments = String(metrics.comments); filled.add("comments"); }
-        if (metrics.shares !== undefined) { updated.shares = String(metrics.shares); filled.add("shares"); }
-        if (metrics.saves !== undefined) { updated.saves = String(metrics.saves); filled.add("saves"); }
-        if (metrics.accountsReached !== undefined) { updated.accountsReached = String(metrics.accountsReached); filled.add("accountsReached"); }
-        if (metrics.watchTime) { updated.watchTime = metrics.watchTime; filled.add("watchTime"); }
-        if (metrics.avgWatchTime) { updated.avgWatchTime = metrics.avgWatchTime; filled.add("avgWatchTime"); }
-        if (metrics.skipRate !== undefined) { updated.skipRate = String(metrics.skipRate); filled.add("skipRate"); }
-        if (metrics.interactions !== undefined) { updated.interactions = String(metrics.interactions); filled.add("interactions"); }
-        if (metrics.profileActivity !== undefined) { updated.profileActivity = String(metrics.profileActivity); filled.add("profileActivity"); }
-        return updated;
-      });
+        setFormData((prev) => {
+          const updated = { ...prev };
+          if (metrics.title && !prev.title) { updated.title = metrics.title; allFilled.add("title"); }
+          if (metrics.platform) { updated.platform = metrics.platform; allFilled.add("platform"); }
+          if (metrics.views !== undefined) { updated.views = String(metrics.views); allFilled.add("views"); }
+          if (metrics.likes !== undefined) { updated.likes = String(metrics.likes); allFilled.add("likes"); }
+          if (metrics.comments !== undefined) { updated.comments = String(metrics.comments); allFilled.add("comments"); }
+          if (metrics.shares !== undefined) { updated.shares = String(metrics.shares); allFilled.add("shares"); }
+          if (metrics.saves !== undefined) { updated.saves = String(metrics.saves); allFilled.add("saves"); }
+          if (metrics.accountsReached !== undefined) { updated.accountsReached = String(metrics.accountsReached); allFilled.add("accountsReached"); }
+          if (metrics.watchTime) { updated.watchTime = metrics.watchTime; allFilled.add("watchTime"); }
+          if (metrics.avgWatchTime) { updated.avgWatchTime = metrics.avgWatchTime; allFilled.add("avgWatchTime"); }
+          if (metrics.skipRate !== undefined) { updated.skipRate = String(metrics.skipRate); allFilled.add("skipRate"); }
+          if (metrics.interactions !== undefined) { updated.interactions = String(metrics.interactions); allFilled.add("interactions"); }
+          if (metrics.profileActivity !== undefined) { updated.profileActivity = String(metrics.profileActivity); allFilled.add("profileActivity"); }
+          return updated;
+        });
+      }
 
-      setExtractedFields(filled);
+      setExtractedFields(allFilled);
       toast({
         title: "Metrics extracted",
-        description: `Auto-filled ${filled.size} field${filled.size !== 1 ? "s" : ""} from your screenshot.`,
+        description: `Auto-filled ${allFilled.size} field${allFilled.size !== 1 ? "s" : ""} from ${imageFiles.length} screenshot${imageFiles.length !== 1 ? "s" : ""}.`,
       });
     } catch {
-      toast({ title: "Extraction failed", description: "Could not read metrics from that screenshot. Try a clearer image or fill in manually.", variant: "destructive" });
+      toast({ title: "Extraction failed", description: "Could not read metrics from screenshots. Try clearer images or fill in manually.", variant: "destructive" });
     } finally {
       setIsExtracting(false);
+      setExtractProgress(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
@@ -442,6 +451,7 @@ function AddVideoForm({
           ref={fileInputRef}
           type="file"
           accept="image/*"
+          multiple
           onChange={handleScreenshotUpload}
           className="hidden"
           data-testid="input-screenshot-upload"
@@ -449,20 +459,32 @@ function AddVideoForm({
         {isExtracting ? (
           <div className="flex flex-col items-center gap-2 py-2">
             <Loader2 className="w-6 h-6 text-primary animate-spin" />
-            <p className="text-sm font-medium text-primary">Analyzing screenshot...</p>
+            <p className="text-sm font-medium text-primary">
+              Analyzing screenshot{extractProgress && extractProgress.total > 1 ? ` ${extractProgress.current} of ${extractProgress.total}` : ""}...
+            </p>
             <p className="text-xs text-muted-foreground">AI is reading your metrics</p>
           </div>
-        ) : screenshotPreview && extractedFields.size > 0 ? (
+        ) : screenshotPreviews.length > 0 && extractedFields.size > 0 ? (
           <div className="flex items-center gap-3">
-            <img
-              src={screenshotPreview}
-              alt="Uploaded screenshot"
-              className="w-16 h-16 object-cover rounded-md border"
-            />
+            <div className="flex gap-1.5 shrink-0">
+              {screenshotPreviews.slice(0, 4).map((src, i) => (
+                <img
+                  key={i}
+                  src={src}
+                  alt={`Screenshot ${i + 1}`}
+                  className="w-12 h-12 object-cover rounded-md border"
+                />
+              ))}
+              {screenshotPreviews.length > 4 && (
+                <div className="w-12 h-12 rounded-md border bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                  +{screenshotPreviews.length - 4}
+                </div>
+              )}
+            </div>
             <div className="flex-1 text-left">
               <div className="flex items-center gap-1.5 text-sm font-medium text-green-600 dark:text-green-400">
                 <CheckCircle2 className="w-4 h-4" />
-                {extractedFields.size} metrics extracted
+                {extractedFields.size} metrics from {screenshotPreviews.length} screenshot{screenshotPreviews.length !== 1 ? "s" : ""}
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Fields highlighted below were auto-filled. You can edit them.
@@ -476,7 +498,7 @@ function AddVideoForm({
               data-testid="button-upload-another-screenshot"
             >
               <Camera className="w-3.5 h-3.5 mr-1" />
-              New Screenshot
+              Upload More
             </Button>
           </div>
         ) : (
@@ -487,9 +509,9 @@ function AddVideoForm({
             <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
               <Camera className="w-5 h-5 text-primary" />
             </div>
-            <p className="text-sm font-medium">Upload Metrics Screenshot</p>
+            <p className="text-sm font-medium">Upload Metrics Screenshots</p>
             <p className="text-xs text-muted-foreground max-w-xs">
-              Upload a screenshot of your Instagram Insights, TikTok Analytics, or YouTube Studio and AI will auto-fill the metrics below
+              Upload one or more screenshots from Instagram Insights, TikTok Analytics, or YouTube Studio — AI will auto-fill all the metrics
             </p>
           </div>
         )}
