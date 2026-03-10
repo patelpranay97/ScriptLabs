@@ -1,15 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Zap, MessageSquare, BarChart3, TrendingUp, ArrowRight } from "lucide-react";
+import logoImg from "@assets/C5D6A3E8-825E-405F-BBAA-3E75D3F41AC5_1773121489614.png";
 
 export default function Landing() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="flex items-center justify-between gap-2 px-6 py-4 border-b">
         <div className="flex items-center gap-2">
-          <div className="flex items-center justify-center w-8 h-8 rounded-md bg-primary">
-            <Zap className="w-4 h-4 text-primary-foreground" />
-          </div>
-          <span className="text-lg font-semibold tracking-tight">ScriptLabs</span>
+          <img src={logoImg} alt="ScriptLabs" className="h-8 w-auto" />
         </div>
         <a href="/api/login">
           <Button data-testid="button-login">Sign In</Button>
