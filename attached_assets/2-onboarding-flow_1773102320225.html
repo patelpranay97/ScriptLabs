@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScriptLab AI — Onboarding Flow</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { min-height: 100vh; background: #08080D; color: #E2E2E8; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+
+  .header { padding: 28px 24px 20px; border-bottom: 1px solid rgba(245,158,11,0.15); background: linear-gradient(180deg, rgba(245,158,11,0.06) 0%, transparent 100%); }
+  .header-inner { max-width: 860px; margin: 0 auto; }
+  .header-label { font-size: 11px; letter-spacing: 3px; color: #F59E0B; margin-bottom: 6px; text-transform: uppercase; font-weight: 600; }
+  .header h1 { font-size: 26px; font-weight: 700; color: #fff; }
+  .header p { font-size: 14px; color: #9898A6; margin-top: 6px; }
+
+  .nav { padding: 16px 24px; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.3); overflow-x: auto; }
+  .nav-inner { max-width: 860px; margin: 0 auto; display: flex; gap: 4px; }
+  .nav-btn { padding: 10px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); color: #7A7A8A; font-size: 13px; cursor: pointer; font-weight: 400; transition: all 0.2s; white-space: nowrap; font-family: inherit; display: flex; align-items: center; gap: 8px; }
+  .nav-btn.active { border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.12); color: #FCD34D; font-weight: 600; }
+  .nav-num { width: 22px; height: 22px; border-radius: 6px; background: rgba(255,255,255,0.06); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #666; flex-shrink: 0; }
+  .nav-btn.active .nav-num { background: linear-gradient(135deg, #F59E0B, #EC4899); color: #fff; }
+
+  .content { max-width: 860px; margin: 0 auto; padding: 24px 24px 60px; }
+
+  .step-label { font-size: 11px; color: #F59E0B; font-weight: 600; letter-spacing: 2px; margin-bottom: 4px; }
+  .step-title { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .step-subtitle { font-size: 14px; color: #9898A6; margin-bottom: 24px; }
+
+  .chat-box { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 20px 16px; margin-bottom: 20px; }
+  .chat-label { font-size: 11px; color: #555; text-align: center; margin-bottom: 12px; letter-spacing: 1px; }
+  .msg { display: flex; margin-bottom: 12px; }
+  .msg:last-child { margin-bottom: 0; }
+  .msg.bot { justify-content: flex-start; }
+  .msg.user { justify-content: flex-end; }
+  .msg-bubble { max-width: 82%; padding: 12px 16px; font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
+  .msg.bot .msg-bubble { border-radius: 14px 14px 14px 4px; background: rgba(255,255,255,0.06); color: #C8C8D4; }
+  .msg.user .msg-bubble { border-radius: 14px 14px 4px 14px; background: linear-gradient(135deg, #8B5CF6, #7C3AED); color: #fff; }
+  .msg-sender { font-size: 10px; font-weight: 600; margin-bottom: 4px; letter-spacing: 1px; }
+  .msg.bot .msg-sender { color: #F59E0B; }
+  .msg.user .msg-sender { color: rgba(255,255,255,0.6); text-align: right; }
+
+  .info-box { border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+  .info-box.db { background: rgba(16,185,129,0.05); border: 1px solid rgba(16,185,129,0.15); }
+  .info-box.why { background: rgba(139,92,246,0.05); border: 1px solid rgba(139,92,246,0.15); }
+  .info-label { font-size: 12px; font-weight: 700; letter-spacing: 1.5px; margin-bottom: 10px; }
+  .info-box.db .info-label { color: #10B981; }
+  .info-box.why .info-label { color: #8B5CF6; }
+  .info-row { display: flex; gap: 10px; font-size: 13px; margin-bottom: 6px; align-items: flex-start; }
+  .info-field { color: #10B981; font-family: monospace; font-size: 12px; min-width: 160px; flex-shrink: 0; }
+  .info-value { color: #9898A6; }
+  .info-box p { font-size: 14px; color: #B0B0BE; line-height: 1.6; margin: 0; }
+
+  .nav-arrows { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 36px; }
+  .arrow-btn { padding: 10px 20px; border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit; }
+  .arrow-btn.prev { border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); color: #9898A6; }
+  .arrow-btn.next { border: 1px solid rgba(245,158,11,0.3); background: rgba(245,158,11,0.1); color: #FCD34D; font-weight: 600; }
+
+  .db-section { border-top: 1px solid rgba(255,255,255,0.06); padding-top: 24px; }
+  .db-toggle { padding: 12px 20px; border-radius: 10px; border: 1px solid rgba(16,185,129,0.2); background: rgba(16,185,129,0.06); color: #10B981; font-size: 14px; cursor: pointer; font-weight: 600; width: 100%; text-align: left; font-family: inherit; }
+  .db-table { margin-top: 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; overflow: hidden; }
+  .db-table-header { padding: 14px 18px; background: rgba(16,185,129,0.06); border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .db-table-header h3 { font-size: 15px; font-weight: 700; color: #10B981; }
+  .db-table-header p { font-size: 13px; color: #9898A6; margin-top: 2px; }
+  .db-field-row { display: grid; grid-template-columns: 140px 80px 1fr; padding: 8px 18px; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.03); gap: 10px; }
+  .db-field-row:last-child { border-bottom: none; }
+  .db-fname { color: #E2E2E8; font-family: monospace; font-size: 12px; }
+  .db-ftype { color: #8B5CF6; font-size: 11px; font-family: monospace; background: rgba(139,92,246,0.1); padding: 2px 6px; border-radius: 4px; text-align: center; }
+  .db-fdesc { color: #9898A6; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="header-label">Onboarding Module</div>
+    <h1>New User → First Script Flow</h1>
+    <p>Exactly what the chatbot says, what the user does, and what gets stored — step by step</p>
+  </div>
+</div>
+
+<div class="nav"><div class="nav-inner" id="nav"></div></div>
+<div class="content" id="content"></div>
+
+<script>
+const steps = [
+  {
+    title: "Niche & Goals", subtitle: "Who are you and what do you want to create?",
+    messages: [
+      { type: "bot", text: "Hey! Welcome to ScriptLab. I'm your AI content strategist — I'm going to help you write viral scripts by learning what works in YOUR niche." },
+      { type: "bot", text: "Let's start simple. What kind of content do you make (or want to make)? For example: storytelling, educational, comedy skits, day-in-my-life, fitness tips, cooking, tech reviews..." },
+      { type: "user", text: "I make storytelling content about growing up as a first-gen American" },
+      { type: "bot", text: "Love that — identity and cultural storytelling is one of the most shareable niches on social media right now. People connect deeply with \"I thought I was the only one\" moments." },
+      { type: "bot", text: "What platform are you posting on primarily?" },
+      { type: "user", text: "Instagram Reels mostly, sometimes TikTok" },
+      { type: "bot", text: "Great. Now here's the most important question: Name 3-4 creators whose videos make you think \"I wish I could make content like that.\" They don't have to be in your exact niche — just creators whose STYLE you admire." },
+      { type: "user", text: "@anubhavsinghbassi, @tanmaybhat, and @mattdavella" },
+    ],
+    stored: [
+      { field: "niche", value: "Cultural storytelling / first-gen identity" },
+      { field: "platform", value: "Instagram Reels, TikTok" },
+      { field: "inspiration_creators", value: "[@anubhavsinghbassi, @tanmaybhat, @mattdavella]" },
+    ],
+    note: "The bot doesn't just collect names — it asks WHY they like those creators. This helps the AI understand tone preferences (funny vs. reflective, fast-paced vs. slow-burn) before analyzing any scripts.",
+  },
+  {
+    title: "Video Selection", subtitle: "Pick 2-3 winning videos from each creator",
+    messages: [
+      { type: "bot", text: "Perfect picks. Now here's what we're going to do — and this is the foundation of everything." },
+      { type: "bot", text: "I need you to go to each creator's profile and pick 2-3 of their BEST videos. \"Best\" means either:" },
+      { type: "bot", text: "→ Their most viewed/liked videos (look at view counts)\n→ OR videos that YOU personally think are their best work\n\nEither works. We're looking for the videos that hit hardest." },
+      { type: "bot", text: "Let's start with your first creator: @anubhavsinghbassi. Go to their profile and send me the links to 2-3 of their best videos. Take your time — I'll be here." },
+      { type: "user", text: "Here's two:\nhttps://instagram.com/reel/abc123\nhttps://instagram.com/reel/def456" },
+      { type: "bot", text: "Got them. Now for @tanmaybhat — same thing, 2-3 of their best." },
+    ],
+    stored: [
+      { field: "reference_videos", value: "[{creator: '@anubhavsinghbassi', links: [2 videos]}, {creator: '@tanmaybhat', links: [...]}, ...]" },
+    ],
+    note: "The bot collects one creator at a time to avoid overwhelming the user. It's patient — 'take your time, I'll be here' reduces pressure. All links are stored in the database for future reference.",
+  },
+  {
+    title: "Transcription Teaching", subtitle: "The bot teaches them how to extract scripts from videos",
+    messages: [
+      { type: "bot", text: "Awesome — I've got 7 reference videos. Now comes the magic part: we need to turn these videos into text scripts so I can analyze them." },
+      { type: "bot", text: "Here's how to do it (it's easier than it sounds):" },
+      { type: "bot", text: "OPTION A — Fastest (Instagram/TikTok built-in):\n\n1. Open the Reel\n2. Tap the \"...\" menu\n3. Tap \"Transcript\" or \"Captions\"\n4. Copy the full text\n5. Paste it here\n\nThis works on most videos that have captions enabled." },
+      { type: "bot", text: "OPTION B — If no transcript is available:\n\n1. Screen-record the video (or download it)\n2. Go to turboscribe.ai (free) or riverside.fm\n3. Upload the video or audio file\n4. It'll give you a full text transcript\n5. Copy and paste it here\n\nOther tools that work: Otter.ai, Descript, even just uploading to YouTube as unlisted and grabbing auto-captions." },
+      { type: "bot", text: "OPTION C — Quickest hack:\n\n1. Play the video\n2. Open your phone's voice memo or a Google Doc with voice typing\n3. Let it \"listen\" to the video\n4. Clean up the text and paste it here\n\nNot perfect, but works in a pinch." },
+      { type: "bot", text: "Let's start with just ONE video. Try any method above on the first @anubhavsinghbassi video and paste the script here. Don't worry if it's messy — I can clean it up." },
+      { type: "user", text: "Ok here's the first one: \"So my dad refused to pay $15 for a kid's haircut. He said why would I pay for this when I have two hands and a YouTube video. So every Sunday morning...\"" },
+      { type: "bot", text: "That's great — I can work with this. I see this is a storytelling format with a strong hook that drops you right into a specific memory. Let me save this. Send me the next one whenever you're ready." },
+    ],
+    stored: [
+      { field: "reference_scripts[]", value: "{creator: '@anubhavsinghbassi', video_link: '...', transcript: '...', method: 'manual'}" },
+    ],
+    note: "Three options ranked by ease. The bot starts with just ONE video to reduce friction — once the user does it once, the rest feel easy. The bot also offers to 'clean up' messy transcripts, removing another barrier. Key: it gives immediate micro-feedback ('I see a strong hook') so the user knows it's working.",
+  },
+  {
+    title: "Pattern Analysis", subtitle: "The AI finds what makes these creators' content work",
+    messages: [
+      { type: "bot", text: "I've now analyzed all 7 scripts across your 3 reference creators. Here's what I'm seeing — this is your starting blueprint:" },
+      { type: "bot", text: "🔍 PATTERN ANALYSIS\n\nHOOK STYLE: All 3 creators drop you into a specific moment — no intros, no \"hey guys.\" Usually a parent, a situation, or a bold statement in the first sentence.\n\nSTRUCTURE: Setup (5-8 sec) → Escalation with details (15-20 sec) → Emotional turn (5-8 sec) → Reflective close (3-5 sec)\n\nEMOTION ARC: They all start with humor or tension, then pivot to something deeper — nostalgia, pride, or bittersweet acceptance.\n\nSPECIFICITY: Nobody says \"my mom cooked food.\" They say \"my mom packed three containers of thepla wrapped in foil.\" The details ARE the content.\n\nTONE: Conversational, like telling a friend a story. Not performative. Not preachy." },
+      { type: "bot", text: "This is your starting framework. As you post videos and I see what works with YOUR audience specifically, we'll refine this into your personalized Virality DNA.\n\nReady to write your first script?" },
+      { type: "user", text: "Yes let's do it" },
+    ],
+    stored: [
+      { field: "baseline_blueprint", value: "{hook_style: '...', structure: '...', emotion_arc: '...', specificity_notes: '...', tone: '...'}" },
+    ],
+    note: "This is the first 'wow' moment — the user sees patterns they probably never noticed consciously. The blueprint is stored in the database and referenced every time a new script is written. It evolves into the full Virality DNA after ~10 videos with performance data.",
+  },
+  {
+    title: "First Script", subtitle: "Immediately put the blueprint to work",
+    messages: [
+      { type: "bot", text: "What's a story or idea you've been wanting to make a video about? Give me even a rough idea — doesn't have to be polished." },
+      { type: "user", text: "Something about how my parents never threw anything away. Like we had a drawer full of plastic bags and rubber bands from broccoli" },
+      { type: "bot", text: "Oh that's perfect — that's universal AND specific. Exactly the kind of detail that performs well based on your reference creators.\n\nHere's a first draft using your blueprint:" },
+      { type: "bot", text: "[SCRIPT DRAFT]\n\n\"My mom had a drawer in the kitchen that couldn't fully open because it was stuffed with plastic bags. Inside those plastic bags? More plastic bags.\n\nWe didn't throw anything away. Yogurt containers became tupperware. Old t-shirts became cleaning rags. The rubber bands from broccoli? Junk drawer. Every single one.\n\nI used to be embarrassed when friends came over...\n\n[continues with emotional shift and reflective close]\"" },
+      { type: "bot", text: "I used your blueprint patterns here:\n✓ Dropped into a specific visual (the drawer)\n✓ Escalated with increasingly specific details\n✓ Building toward an emotional turn\n✓ Conversational tone throughout\n\nWant to adjust anything? We can iterate until it feels like YOU." },
+    ],
+    stored: [
+      { field: "videos[] (new entry)", value: "{title: 'The drawer', status: 'drafted', final_script: '...', blueprint_elements_used: [...]}" },
+    ],
+    note: "Zero gap between analysis and creation. The user goes from 'I just signed up' to 'I have a script ready to film' in one session. The bot explicitly shows which blueprint elements it used — this teaches the user to think structurally about their content.",
+  },
+  {
+    title: "Post & Begin the Loop", subtitle: "The feedback engine starts turning",
+    messages: [
+      { type: "bot", text: "Once you've filmed and posted this video, come back and tell me. Or just say \"I posted it\" and drop the link." },
+      { type: "bot", text: "After you post, here's what I need from you at each checkpoint:\n\n📸 After 24 hours → Screenshot your Reel Insights (the retention graph + metrics page)\n📸 After 48 hours → Another screenshot\n📸 After 3 days → Another\n📸 After 1 week → Final screenshot\n\nI'll send you a reminder each time so you don't have to remember. Just upload the screenshots here and I'll read the data automatically.\n\nThis is how we learn. Every video teaches us something. By video 10, I'll know EXACTLY what makes YOUR audience tick." },
+      { type: "user", text: "Got it. I'll film this tomorrow and post it." },
+      { type: "bot", text: "Let's go. When you're back, just say \"I posted it\" and we'll kick off the tracking. In the meantime, if you want to brainstorm more ideas or tweak the script, I'm here.\n\nYou're on Video #1. The journey starts now. 🎬" },
+    ],
+    stored: [
+      { field: "videos[0].status", value: "'posted' (updated when user confirms)" },
+      { field: "metric_reminders[]", value: "4 scheduled reminders: 1_day, 2_day, 3_day, 7_day (auto-created on post confirmation)" },
+    ],
+    note: "The bot sets clear expectations WITHOUT being overwhelming. Four simple screenshots over a week. Reminders are automated — the user doesn't need discipline, just cooperation. The 'Video #1' counter creates momentum and gamification.",
+  },
+];
+
+const dbTable = {
+  fields: [
+    { name: "id", type: "auto", desc: "Unique ID" },
+    { name: "user_id", type: "FK", desc: "Which user uploaded this" },
+    { name: "creator_handle", type: "text", desc: "@username of the reference creator" },
+    { name: "video_link", type: "url", desc: "Link to the original video" },
+    { name: "transcript", type: "long text", desc: "Full transcribed script" },
+    { name: "transcription_method", type: "enum", desc: "app_native | turboscribe | manual | other" },
+    { name: "ai_analysis", type: "json", desc: "Hook type, structure, tone, emotion arc detected by AI" },
+    { name: "created_at", type: "timestamp", desc: "When this was added" },
+  ]
+};
+
+let activeStep = 0;
+let showDb = false;
+
+function render() {
+  const nav = document.getElementById("nav");
+  nav.innerHTML = steps.map((s, i) =>
+    `<button class="nav-btn ${activeStep === i ? 'active' : ''}" onclick="setStep(${i})">
+      <span class="nav-num">${i + 1}</span>${s.title}
+    </button>`
+  ).join("");
+
+  const s = steps[activeStep];
+  let html = `
+    <div class="step-label">STEP ${activeStep + 1} OF 6</div>
+    <div class="step-title">${s.title}</div>
+    <div class="step-subtitle">${s.subtitle}</div>
+    <div class="chat-box">
+      <div class="chat-label">CHATBOT CONVERSATION PREVIEW</div>
+      ${s.messages.map(m => `
+        <div class="msg ${m.type}">
+          <div class="msg-bubble">
+            <div class="msg-sender">${m.type === "bot" ? "SCRIPTLAB AI" : "USER"}</div>
+            ${m.text}
+          </div>
+        </div>
+      `).join("")}
+    </div>
+    <div class="info-box db">
+      <div class="info-label">💾 SAVED TO DATABASE</div>
+      ${s.stored.map(st => `
+        <div class="info-row">
+          <span class="info-field">${st.field}</span>
+          <span class="info-value">${st.value}</span>
+        </div>
+      `).join("")}
+    </div>
+    <div class="info-box why">
+      <div class="info-label">🧠 WHY IT'S DESIGNED THIS WAY</div>
+      <p>${s.note}</p>
+    </div>
+    <div class="nav-arrows">
+      ${activeStep > 0 ? `<button class="arrow-btn prev" onclick="setStep(${activeStep - 1})">← Step ${activeStep}</button>` : '<div></div>'}
+      ${activeStep < 5 ? `<button class="arrow-btn next" onclick="setStep(${activeStep + 1})">Step ${activeStep + 2} →</button>` : '<div></div>'}
+    </div>
+    <div class="db-section">
+      <button class="db-toggle" onclick="toggleDb()">${showDb ? '▼' : '▶'} New Database Table Required: reference_scripts</button>
+      ${showDb ? `
+        <div class="db-table">
+          <div class="db-table-header">
+            <h3>reference_scripts</h3>
+            <p>Stores the transcribed scripts from creators the user admires — the baseline the AI learns from before any original content is created.</p>
+          </div>
+          <div style="padding:8px 0">
+            ${dbTable.fields.map(f => `
+              <div class="db-field-row">
+                <span class="db-fname">${f.name}</span>
+                <span class="db-ftype">${f.type}</span>
+                <span class="db-fdesc">${f.desc}</span>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  `;
+  document.getElementById("content").innerHTML = html;
+}
+
+function setStep(i) { activeStep = i; showDb = false; render(); window.scrollTo(0, 0); }
+function toggleDb() { showDb = !showDb; render(); }
+
+render();
+</script>
+</body>
+</html>
