@@ -16,21 +16,28 @@ export default function Chat() {
   const [, setLocation] = useLocation();
   const conversationId = params?.id ? parseInt(params.id) : null;
 
-  if (!conversationId) {
-    return <ChatEmpty onNewChat={handleNewChat} />;
-  }
-
-  async function handleNewChat() {
+  async function handleNewChat(initialMessage?: string) {
     const res = await apiRequest("POST", "/api/conversations", { title: "New Chat" });
     const conv = await res.json();
     queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
-    setLocation(`/chat/${conv.id}`);
+    setLocation(`/chat/${conv.id}${initialMessage ? `?prompt=${encodeURIComponent(initialMessage)}` : ""}`);
+  }
+
+  if (!conversationId) {
+    return <ChatEmpty onNewChat={handleNewChat} />;
   }
 
   return <ChatConversation conversationId={conversationId} />;
 }
 
-function ChatEmpty({ onNewChat }: { onNewChat: () => void }) {
+function ChatEmpty({ onNewChat }: { onNewChat: (msg?: string) => void }) {
+  const prompts = [
+    "Help me analyze my latest video script",
+    "What makes content go viral?",
+    "Review my video performance data",
+    "Build my Virality DNA profile",
+  ];
+
   return (
     <div className="flex flex-col items-center justify-center h-full text-center px-6">
       <div className="flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-6">
@@ -43,12 +50,19 @@ function ChatEmpty({ onNewChat }: { onNewChat: () => void }) {
         that resonates with your audience.
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg w-full mb-6">
-        <PromptCard text="Help me analyze my latest video script" />
-        <PromptCard text="What makes content go viral?" />
-        <PromptCard text="Review my video performance data" />
-        <PromptCard text="Build my Virality DNA profile" />
+        {prompts.map((text) => (
+          <button
+            key={text}
+            type="button"
+            onClick={() => onNewChat(text)}
+            className="text-left p-3 rounded-md border text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:border-primary/20 transition-colors cursor-pointer"
+            data-testid={`button-prompt-${text.slice(0, 20).replace(/\s+/g, "-").toLowerCase()}`}
+          >
+            {text}
+          </button>
+        ))}
       </div>
-      <Button onClick={onNewChat} data-testid="button-start-new-chat">
+      <Button onClick={() => onNewChat()} data-testid="button-start-new-chat">
         <MessageSquare className="w-4 h-4 mr-1" />
         Start New Conversation
       </Button>
@@ -56,13 +70,7 @@ function ChatEmpty({ onNewChat }: { onNewChat: () => void }) {
   );
 }
 
-function PromptCard({ text }: { text: string }) {
-  return (
-    <div className="text-left p-3 rounded-md border text-sm text-muted-foreground hover-elevate cursor-default">
-      {text}
-    </div>
-  );
-}
+const WELCOME_MESSAGE = `Hey! I'm ScriptBot, your AI content strategist. I'm here to help you brainstorm video ideas, write scripts, analyze what's working, and build your unique style.\n\nWhat can I help you with today?`;
 
 function ChatConversation({ conversationId }: { conversationId: number }) {
   const { user } = useAuth();
@@ -71,6 +79,7 @@ function ChatConversation({ conversationId }: { conversationId: number }) {
   const [isStreaming, setIsStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const promptSentRef = useRef(false);
 
   const { data: conversation, isLoading } = useQuery<Conversation & { messages: Message[] }>({
     queryKey: ["/api/conversations", conversationId],
@@ -89,14 +98,29 @@ function ChatConversation({ conversationId }: { conversationId: number }) {
     scrollToBottom();
   }, [conversation?.messages, streamingContent, scrollToBottom]);
 
-  const sendMessage = async () => {
-    if (!input.trim() || isStreaming) return;
+  useEffect(() => {
+    if (promptSentRef.current || isLoading || !conversation) return;
+    const params = new URLSearchParams(window.location.search);
+    const prompt = params.get("prompt");
+    if (prompt && conversation.messages.length === 0) {
+      promptSentRef.current = true;
+      setInput(prompt);
+      window.history.replaceState({}, "", window.location.pathname);
+      setTimeout(() => {
+        sendMessageDirect(prompt);
+      }, 100);
+    }
+  }, [isLoading, conversation]);
 
-    const userMessage = input.trim();
+  const sendMessageDirect = async (messageText: string) => {
+    if (!messageText.trim() || isStreaming) return;
     setInput("");
     setIsStreaming(true);
     setStreamingContent("");
+    await doSendMessage(messageText.trim());
+  };
 
+  const doSendMessage = async (userMessage: string) => {
     queryClient.setQueryData(
       ["/api/conversations", conversationId],
       (old: any) => {
@@ -159,6 +183,15 @@ function ChatConversation({ conversationId }: { conversationId: number }) {
     }
   };
 
+  const sendMessage = async () => {
+    if (!input.trim() || isStreaming) return;
+    const userMessage = input.trim();
+    setInput("");
+    setIsStreaming(true);
+    setStreamingContent("");
+    await doSendMessage(userMessage);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -173,6 +206,7 @@ function ChatConversation({ conversationId }: { conversationId: number }) {
   if (isLoading) return <ChatSkeleton />;
 
   const allMessages = conversation?.messages || [];
+  const showWelcome = allMessages.length === 0 && !isStreaming;
 
   return (
     <div className="flex flex-col h-full">
@@ -185,6 +219,13 @@ function ChatConversation({ conversationId }: { conversationId: number }) {
 
       <ScrollArea className="flex-1 px-6" ref={scrollRef}>
         <div className="max-w-3xl mx-auto py-6 space-y-6">
+          {showWelcome && (
+            <MessageBubble
+              role="assistant"
+              content={WELCOME_MESSAGE}
+              userInitials=""
+            />
+          )}
           {allMessages.map((msg) => (
             <MessageBubble
               key={msg.id}

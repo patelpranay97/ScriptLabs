@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
@@ -31,6 +32,7 @@ const NICHE_SUGGESTIONS = [
 ];
 
 export function OnboardingModal() {
+  const [, setLocation] = useLocation();
   const { data: profile, isLoading } = useQuery<UserProfile | null>({
     queryKey: ["/api/profile"],
   });
@@ -58,6 +60,7 @@ export function OnboardingModal() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      setLocation("/chat");
     },
   });
 

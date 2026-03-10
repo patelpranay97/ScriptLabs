@@ -110,7 +110,7 @@ export async function registerRoutes(
       }
 
       const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 1024,
         messages: [
           {
@@ -294,7 +294,7 @@ Only include fields where you can clearly read the value from the screenshot. Fo
       if (!script) return res.status(404).json({ error: "Script not found" });
 
       const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 2048,
         messages: [
           {
@@ -446,7 +446,7 @@ Keep the analysis concise and actionable — the creator will use these patterns
       res.setHeader("Connection", "keep-alive");
 
       const stream = anthropic.messages.stream({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 4096,
         system: SYSTEM_PROMPT + profileContext + videoContext + refContext,
         messages: chatMessages,
