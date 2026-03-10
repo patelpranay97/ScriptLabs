@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replit_integrations/auth";
+import { isAuthenticated } from "./supabase-auth";
 import { registerAuthRoutes } from "./replit_integrations/auth/routes";
 import Anthropic from "@anthropic-ai/sdk";
 import { insertVideoSchema, insertUserProfileSchema, insertReferenceScriptSchema } from "@shared/schema";
@@ -44,17 +44,15 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  await setupAuth(app);
   registerAuthRoutes(app);
 
   const anthropic = new Anthropic({
-    apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
-    baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+    apiKey: process.env.ANTHROPIC_API_KEY,
   });
 
   app.get("/api/videos", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const vids = await storage.getVideosByUser(userId);
       res.json(vids);
     } catch (error) {
@@ -65,7 +63,7 @@ export async function registerRoutes(
 
   app.post("/api/videos", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const parsed = insertVideoSchema.safeParse({ ...req.body, userId });
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid video data", details: parsed.error.flatten() });
@@ -80,7 +78,7 @@ export async function registerRoutes(
 
   app.patch("/api/videos/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const id = parseInt(req.params.id);
       const video = await storage.updateVideo(id, userId, req.body);
       if (!video) return res.status(404).json({ error: "Video not found" });
@@ -93,7 +91,7 @@ export async function registerRoutes(
 
   app.delete("/api/videos/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const id = parseInt(req.params.id);
       await storage.deleteVideo(id, userId);
       res.status(204).send();
@@ -171,7 +169,7 @@ Only include fields where you can clearly read the value from the screenshot. Fo
 
   app.get("/api/videos/export", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const vids = await storage.getVideosByUser(userId);
 
       const headers = [
@@ -212,7 +210,7 @@ Only include fields where you can clearly read the value from the screenshot. Fo
 
   app.get("/api/profile", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const profile = await storage.getUserProfile(userId);
       res.json(profile || null);
     } catch (error) {
@@ -223,7 +221,7 @@ Only include fields where you can clearly read the value from the screenshot. Fo
 
   app.put("/api/profile", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const parsed = insertUserProfileSchema.safeParse({ ...req.body, userId });
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid profile data", details: parsed.error.flatten() });
@@ -238,7 +236,7 @@ Only include fields where you can clearly read the value from the screenshot. Fo
 
   app.post("/api/profile/generate-dna", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const userVideos = await storage.getVideosByUser(userId);
       const ratedVideos = userVideos.filter((v) => v.isSuccessful !== null);
 
@@ -300,7 +298,7 @@ Format this as a concise, actionable DNA profile (under 400 words) that can guid
 
   app.get("/api/reference-scripts", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const scripts = await storage.getReferenceScripts(userId);
       res.json(scripts);
     } catch (error) {
@@ -311,7 +309,7 @@ Format this as a concise, actionable DNA profile (under 400 words) that can guid
 
   app.post("/api/reference-scripts", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const parsed = insertReferenceScriptSchema.safeParse({ ...req.body, userId });
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid script data", details: parsed.error.flatten() });
@@ -326,7 +324,7 @@ Format this as a concise, actionable DNA profile (under 400 words) that can guid
 
   app.patch("/api/reference-scripts/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const id = parseInt(req.params.id);
       const script = await storage.updateReferenceScript(id, userId, req.body);
       if (!script) return res.status(404).json({ error: "Script not found" });
@@ -339,7 +337,7 @@ Format this as a concise, actionable DNA profile (under 400 words) that can guid
 
   app.delete("/api/reference-scripts/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const id = parseInt(req.params.id);
       await storage.deleteReferenceScript(id, userId);
       res.status(204).send();
@@ -351,7 +349,7 @@ Format this as a concise, actionable DNA profile (under 400 words) that can guid
 
   app.post("/api/reference-scripts/:id/analyze", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const id = parseInt(req.params.id);
       const script = await storage.getReferenceScript(id, userId);
       if (!script) return res.status(404).json({ error: "Script not found" });
@@ -404,7 +402,7 @@ Keep the analysis concise and actionable — the creator will use these patterns
 
   app.get("/api/conversations", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const convs = await storage.getConversationsByUser(userId);
       res.json(convs);
     } catch (error) {
@@ -415,7 +413,7 @@ Keep the analysis concise and actionable — the creator will use these patterns
 
   app.get("/api/conversations/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const id = parseInt(req.params.id);
       const conv = await storage.getConversation(id, userId);
       if (!conv) return res.status(404).json({ error: "Conversation not found" });
@@ -429,7 +427,7 @@ Keep the analysis concise and actionable — the creator will use these patterns
 
   app.post("/api/conversations", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const conv = await storage.createConversation({ userId, title: req.body.title || "New Chat" });
       res.status(201).json(conv);
     } catch (error) {
@@ -440,7 +438,7 @@ Keep the analysis concise and actionable — the creator will use these patterns
 
   app.delete("/api/conversations/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const id = parseInt(req.params.id);
       await storage.deleteConversation(id, userId);
       res.status(204).send();
@@ -452,7 +450,7 @@ Keep the analysis concise and actionable — the creator will use these patterns
 
   app.post("/api/conversations/:id/messages", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const conversationId = parseInt(req.params.id);
       const { content } = req.body;
 
