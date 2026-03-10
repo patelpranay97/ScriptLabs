@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replit_integrations/auth";
 import { registerAuthRoutes } from "./replit_integrations/auth/routes";
 import Anthropic from "@anthropic-ai/sdk";
-import { insertVideoSchema } from "@shared/schema";
+import { insertVideoSchema, insertUserProfileSchema, insertReferenceScriptSchema } from "@shared/schema";
 import { z } from "zod";
 
 const SYSTEM_PROMPT = `You are ScriptLabs AI, an expert AI content strategy coach specializing in social media growth. You help creators craft viral content by analyzing scripts, reviewing video performance, and building their unique "Virality DNA."
@@ -209,6 +209,136 @@ Only include fields where you can clearly read the value from the screenshot. Fo
     }
   });
 
+  app.get("/api/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profile = await storage.getUserProfile(userId);
+      res.json(profile || null);
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  app.put("/api/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const parsed = insertUserProfileSchema.safeParse({ ...req.body, userId });
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid profile data", details: parsed.error.flatten() });
+      }
+      const profile = await storage.upsertUserProfile(parsed.data);
+      res.json(profile);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
+  app.get("/api/reference-scripts", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const scripts = await storage.getReferenceScripts(userId);
+      res.json(scripts);
+    } catch (error) {
+      console.error("Error fetching reference scripts:", error);
+      res.status(500).json({ error: "Failed to fetch reference scripts" });
+    }
+  });
+
+  app.post("/api/reference-scripts", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const parsed = insertReferenceScriptSchema.safeParse({ ...req.body, userId });
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid script data", details: parsed.error.flatten() });
+      }
+      const script = await storage.createReferenceScript(parsed.data);
+      res.status(201).json(script);
+    } catch (error) {
+      console.error("Error creating reference script:", error);
+      res.status(500).json({ error: "Failed to create reference script" });
+    }
+  });
+
+  app.patch("/api/reference-scripts/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+      const script = await storage.updateReferenceScript(id, userId, req.body);
+      if (!script) return res.status(404).json({ error: "Script not found" });
+      res.json(script);
+    } catch (error) {
+      console.error("Error updating reference script:", error);
+      res.status(500).json({ error: "Failed to update reference script" });
+    }
+  });
+
+  app.delete("/api/reference-scripts/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+      await storage.deleteReferenceScript(id, userId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting reference script:", error);
+      res.status(500).json({ error: "Failed to delete reference script" });
+    }
+  });
+
+  app.post("/api/reference-scripts/:id/analyze", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+      const script = await storage.getReferenceScript(id, userId);
+      if (!script) return res.status(404).json({ error: "Script not found" });
+
+      const response = await anthropic.messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 2048,
+        messages: [
+          {
+            role: "user",
+            content: `Analyze this social media video script from creator "${script.creatorHandle}" (${script.platform}). Break down the structural elements that make it effective.
+
+SCRIPT:
+${script.transcript}
+
+Provide your analysis in this format:
+
+HOOK STYLE: How does the video open? What technique is used to grab attention in the first 2-3 seconds?
+
+STRUCTURE: What is the narrative structure? Break down the timing/flow (e.g., setup → escalation → payoff → close).
+
+EMOTION ARC: What emotions does it move through? How does the tone shift throughout?
+
+TONE: What's the overall voice/personality? (e.g., conversational, sarcastic, reflective, energetic)
+
+PACING: How fast does it move? Where are the pauses or acceleration points?
+
+KEY TECHNIQUES: What specific storytelling or content techniques are used? (e.g., pattern interrupts, callbacks, specificity, direct address)
+
+WHAT MAKES IT WORK: In 2-3 sentences, why would this video perform well on ${script.platform}?
+
+Keep the analysis concise and actionable — the creator will use these patterns to inform their own content.`,
+          },
+        ],
+      });
+
+      const textBlock = response.content.find((b) => b.type === "text");
+      if (!textBlock || textBlock.type !== "text") {
+        return res.status(500).json({ error: "No analysis generated" });
+      }
+
+      const analysis = textBlock.text;
+      const updated = await storage.updateReferenceScript(id, userId, { aiAnalysis: analysis });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error analyzing script:", error);
+      res.status(500).json({ error: "Failed to analyze script" });
+    }
+  });
+
   app.get("/api/conversations", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -285,6 +415,27 @@ Only include fields where you can clearly read the value from the screenshot. Fo
         videoContext = `\n\nUSER'S VIDEO LIBRARY (${userVideos.length} videos):\n${videoSummaries.join("\n")}`;
       }
 
+      const userProfile = await storage.getUserProfile(userId);
+      let profileContext = "";
+      if (userProfile) {
+        profileContext = `\n\nUSER PROFILE:`;
+        if (userProfile.niche) profileContext += `\n- Niche: ${userProfile.niche}`;
+        if (userProfile.platforms?.length) profileContext += `\n- Platforms: ${userProfile.platforms.join(", ")}`;
+        if (userProfile.goals) profileContext += `\n- Goals: ${userProfile.goals}`;
+        if (userProfile.inspirationCreators?.length) profileContext += `\n- Inspiration creators: ${userProfile.inspirationCreators.join(", ")}`;
+      }
+
+      const refScripts = await storage.getReferenceScripts(userId);
+      let refContext = "";
+      if (refScripts.length > 0) {
+        const scriptSummaries = refScripts.slice(0, 10).map((s) => {
+          let summary = `- ${s.creatorHandle} (${s.platform}): "${s.transcript.slice(0, 150)}..."`;
+          if (s.aiAnalysis) summary += `\n  Analysis highlights: ${s.aiAnalysis.slice(0, 300)}...`;
+          return summary;
+        });
+        refContext = `\n\nUSER'S REFERENCE SCRIPT LIBRARY (${refScripts.length} scripts from creators they admire):\n${scriptSummaries.join("\n")}\n\nWhen helping the user write scripts, draw on structural patterns, hooks, and techniques from their reference library. Point out when you're using a technique you noticed in their reference creators.`;
+      }
+
       const chatMessages = existingMessages.map((m) => ({
         role: m.role as "user" | "assistant",
         content: m.content,
@@ -297,7 +448,7 @@ Only include fields where you can clearly read the value from the screenshot. Fo
       const stream = anthropic.messages.stream({
         model: "claude-sonnet-4-20250514",
         max_tokens: 4096,
-        system: SYSTEM_PROMPT + videoContext,
+        system: SYSTEM_PROMPT + profileContext + videoContext + refContext,
         messages: chatMessages,
       });
 

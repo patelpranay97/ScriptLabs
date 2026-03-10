@@ -9,9 +9,11 @@ import { useAuth } from "@/hooks/use-auth";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Videos from "@/pages/videos";
+import Scripts from "@/pages/scripts";
 import Chat from "@/pages/chat";
 import NotFound from "@/pages/not-found";
 import { Skeleton } from "@/components/ui/skeleton";
+import { OnboardingModal } from "@/components/onboarding-modal";
 
 function AuthenticatedLayout() {
   const style = {
@@ -31,10 +33,12 @@ function AuthenticatedLayout() {
             <Switch>
               <Route path="/" component={Dashboard} />
               <Route path="/videos" component={Videos} />
+              <Route path="/scripts" component={Scripts} />
               <Route path="/chat" component={Chat} />
               <Route path="/chat/:id" component={Chat} />
               <Route component={NotFound} />
             </Switch>
+            <OnboardingModal />
           </main>
         </div>
       </div>
