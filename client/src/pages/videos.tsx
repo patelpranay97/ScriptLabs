@@ -31,7 +31,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import {
   Plus,
@@ -183,7 +182,7 @@ export default function Videos() {
         <VideosSkeleton />
       ) : filtered && filtered.length > 0 ? (
         <Card>
-          <ScrollArea className="w-full">
+          <div className="w-full overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -267,7 +266,7 @@ export default function Videos() {
                 ))}
               </TableBody>
             </Table>
-          </ScrollArea>
+          </div>
         </Card>
       ) : (
         <EmptyVideos hasSearch={searchQuery.length > 0 || filterSuccess !== "all"} />
